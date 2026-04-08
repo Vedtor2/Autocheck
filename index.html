@@ -109,11 +109,9 @@ const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.
 // FECHA
 document.getElementById("fecha").value = new Date().toISOString().split('T')[0];
 
-// 🔥 CARGAR ACTIVIDADES (CORREGIDO)
+// 🔥 CARGAR ACTIVIDADES
 async function cargarActividades(){
-
   try{
-
     const res = await fetch(API_ACTIVIDADES,{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
@@ -121,54 +119,28 @@ async function cargarActividades(){
     });
 
     let text = await res.text();
+    let data = JSON.parse(text);
 
-    console.log("RESPUESTA CRUDA:", text);
-
-    let data;
-
-    try{
-      data = JSON.parse(text);
-    }catch(e){
-      alert("El endpoint no devolvió JSON");
-      return;
-    }
-
-    // 🔥 SOPORTE POWER AUTOMATE
-    if(data.value){
-      data = data.value;
-    }
-
-    if(!Array.isArray(data)){
-      alert("Formato incorrecto del flujo");
-      return;
-    }
+    if(data.value) data = data.value;
 
     window.dataActividades = data;
-
     window.listaActividades = [...new Set(data.map(r => r["ACTIVIDAD"]))];
 
     document.getElementById("btnAgregar").disabled = false;
-
-    console.log("ACTIVIDADES:", window.listaActividades);
-
     agregarActividad();
 
   }catch(e){
-
-    console.error(e);
     alert("Error cargando actividades");
-
+    console.error(e);
   }
 }
 
 // 🔥 AGREGAR ACTIVIDAD
 function agregarActividad(){
-
   let div = document.createElement("div");
   div.className="card";
 
   let opciones = `<option value="">Seleccione actividad</option>`;
-
   window.listaActividades.forEach(a=>{
     opciones += `<option>${a}</option>`;
   });
@@ -185,7 +157,6 @@ function agregarActividad(){
 
 // 🔥 CARGAR PASOS
 function cargarPasos(select){
-
   let actividad = select.value;
   let contenedor = select.parentElement;
 
@@ -194,7 +165,6 @@ function cargarPasos(select){
   let pasos = window.dataActividades.filter(r => r["ACTIVIDAD"] === actividad);
 
   pasos.forEach((p, i)=>{
-
     let div = document.createElement("div");
     div.className = "paso";
 
@@ -218,7 +188,124 @@ function cargarPasos(select){
   });
 }
 
-// 🔥 INIT
+// 🔥 BASE64
+function toBase64(file){
+  return new Promise(resolve=>{
+    let reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = ()=> resolve(reader.result);
+  });
+}
+
+// 🔥 PROGRESO
+function updateProgress(p){
+  let bar = document.getElementById("progressBar");
+  bar.style.width = p + "%";
+  bar.innerText = p + "%";
+}
+
+// 🔥 ENVIAR (CORREGIDO)
+async function enviar(){
+
+  try{
+
+    document.getElementById("btnEnviar").disabled = true;
+    document.getElementById("progressContainer").style.display = "block";
+
+    let data = {
+      fecha: fecha.value,
+      cuadrilla: cuadrilla.value,
+      integrantes: integrantes.value,
+      sede: sede.value,
+      registros:[]
+    };
+
+    let totalFiles = 0;
+
+    document.querySelectorAll(".file").forEach(f=>{
+      totalFiles += f.files.length;
+    });
+
+    if(totalFiles === 0){
+      alert("Debe subir al menos una evidencia");
+      document.getElementById("btnEnviar").disabled = false;
+      return;
+    }
+
+    let processed = 0;
+
+    for(let card of document.querySelectorAll(".card")){
+
+      let actividad = card.querySelector(".actividad").value;
+
+      let pasos = card.querySelectorAll(".paso");
+
+      for(let i=0; i<pasos.length; i++){
+
+        let paso = pasos[i];
+        let files = paso.querySelector(".file").files;
+
+        let etapa = paso.children[1].innerText;
+        let pregunta = paso.children[3].innerText;
+        let criterio = paso.children[5].innerText;
+        let evidencia = paso.children[7].innerText;
+
+        for(let j=0; j<files.length; j++){
+
+          let file = files[j];
+
+          let nombreArchivo = `${i+1}-${etapa}`;
+          if(j > 0) nombreArchivo += `(${j})`;
+
+          let base64 = await toBase64(file);
+
+          data.registros.push({
+            actividad,
+            numero: i+1,
+            etapa,
+            pregunta,
+            criterio,
+            evidencia,
+            nombreArchivo,
+            file:{
+              nombre: nombreArchivo,
+              tipo: file.type,
+              data: base64.split(",")[1]
+            }
+          });
+
+          processed++;
+          updateProgress(Math.round((processed / totalFiles) * 100));
+        }
+      }
+    }
+
+    // 🔥 ENVÍO REAL
+    const res = await fetch(API_ENVIO,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(data)
+    });
+
+    if(!res.ok){
+      throw new Error("Error en envío");
+    }
+
+    updateProgress(100);
+
+    setTimeout(()=>{
+      alert("Gracias por contribuir con tu seguridad");
+      location.reload();
+    },1000);
+
+  }catch(e){
+    alert("Error al enviar");
+    console.error(e);
+    document.getElementById("btnEnviar").disabled = false;
+  }
+}
+
+// INIT
 window.onload = ()=>{
   cargarActividades();
 }
