@@ -25,6 +25,10 @@ button {
   margin-top:15px;
 }
 
+button:disabled {
+  background:gray;
+}
+
 .card {
   border:1px solid #ccc;
   padding:10px;
@@ -69,14 +73,14 @@ button {
 
 <div id="actividades"></div>
 
-<button onclick="agregarActividad()">Agregar Actividad</button>
+<button id="btnAgregar" onclick="agregarActividad()" disabled>Agregar Actividad</button>
 <button onclick="enviar()">Enviar</button>
 
 </div>
 
 <script>
 
-// ENDPOINTS
+// 🔥 ENDPOINT
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 document.getElementById("fecha").value = new Date().toISOString().split('T')[0];
@@ -92,16 +96,26 @@ async function cargarActividades(){
       body: JSON.stringify({ tipo:"actividades" })
     });
 
-    const data = await res.json();
+    let data = await res.json();
 
-    console.log("DATA REAL:", data);
+    console.log("DATA RAW:", data);
+
+    // 🔥 SOPORTA AMBOS FORMATOS
+    if(data.value){
+      data = data.value;
+    }
 
     window.dataActividades = data;
 
-    // 🔥 LISTA ÚNICA
     window.listaActividades = [...new Set(data.map(r => r["ACTIVIDAD"]))];
 
     console.log("ACTIVIDADES:", window.listaActividades);
+
+    // 🔥 HABILITAR BOTÓN
+    document.getElementById("btnAgregar").disabled = false;
+
+    // 🔥 CREAR PRIMER BLOQUE AUTOMÁTICO
+    agregarActividad();
 
   }catch(e){
     console.error("ERROR:", e);
@@ -114,7 +128,7 @@ async function cargarActividades(){
 function agregarActividad(){
 
   if(!window.listaActividades){
-    alert("Aún no cargan las actividades");
+    alert("Cargando datos, espera...");
     return;
   }
 
@@ -176,7 +190,7 @@ function cargarPasos(select){
 
 }
 
-// 🔥 ENVIAR (simplificado)
+// 🔥 ENVIAR
 function enviar(){
 
   let registros = [];
@@ -190,12 +204,12 @@ function enviar(){
       let file = paso.querySelector(".file").files[0];
 
       registros.push({
-        actividad: actividad,
-        orden: i+1,
+        actividad,
+        orden:i+1,
         pregunta: paso.children[1].innerText,
         criterio: paso.children[3].innerText,
         evidencia: paso.children[5].innerText,
-        file: file
+        file
       });
 
     });
