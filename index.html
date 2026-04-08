@@ -41,12 +41,6 @@ button:disabled {
   margin-top:10px;
   padding-top:10px;
 }
-
-#debug {
-  margin-top:10px;
-  font-size:12px;
-  color:#555;
-}
 </style>
 </head>
 
@@ -82,19 +76,15 @@ button:disabled {
 <button id="btnAgregar" onclick="agregarActividad()" disabled>Agregar Actividad</button>
 <button onclick="enviar()">Enviar</button>
 
-<div id="debug"></div>
-
 </div>
 
 <script>
 
-// 🔥 TU ENDPOINT
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
-// FECHA
 document.getElementById("fecha").value = new Date().toISOString().split('T')[0];
 
-// 🔥 CARGAR ACTIVIDADES SEGURO
+// 🔥 CARGAR ACTIVIDADES
 async function cargarActividades(){
 
   try{
@@ -105,29 +95,10 @@ async function cargarActividades(){
       body: JSON.stringify({ tipo:"actividades" })
     });
 
-    if(!res.ok){
-      throw new Error("Error HTTP: " + res.status);
-    }
+    let data = await res.json();
 
-    let text = await res.text();
-
-    document.getElementById("debug").innerText = "RAW RESPONSE:\n" + text;
-
-    let data;
-
-    try{
-      data = JSON.parse(text);
-    }catch(e){
-      throw new Error("No es JSON válido");
-    }
-
-    // Soporta ambos formatos
     if(data.value){
       data = data.value;
-    }
-
-    if(!Array.isArray(data)){
-      throw new Error("No es array");
     }
 
     window.dataActividades = data;
@@ -136,17 +107,12 @@ async function cargarActividades(){
 
     document.getElementById("btnAgregar").disabled = false;
 
-    // crear primer bloque
     agregarActividad();
 
   }catch(e){
 
     console.error("ERROR:", e);
-
-    document.getElementById("debug").innerText =
-      "ERROR:\n" + e.message;
-
-    alert("No se pudieron cargar actividades. Ver consola (F12)");
+    alert("Error cargando actividades");
 
   }
 
@@ -156,7 +122,7 @@ async function cargarActividades(){
 function agregarActividad(){
 
   if(!window.listaActividades){
-    alert("Aún no cargan las actividades");
+    alert("Cargando datos...");
     return;
   }
 
@@ -215,7 +181,7 @@ function cargarPasos(select){
 
 }
 
-// 🔥 ENVIAR (solo debug por ahora)
+// 🔥 ENVIAR (aún debug)
 function enviar(){
 
   let registros = [];
