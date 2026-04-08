@@ -80,51 +80,40 @@ button:disabled {
 
 <script>
 
+// 🔥 ENDPOINTS
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
+const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1";
+
+// FECHA AUTOMÁTICA
 document.getElementById("fecha").value = new Date().toISOString().split('T')[0];
 
 // 🔥 CARGAR ACTIVIDADES
 async function cargarActividades(){
 
-  try{
+  const res = await fetch(API_ACTIVIDADES,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ tipo:"actividades" })
+  });
 
-    const res = await fetch(API_ACTIVIDADES,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ tipo:"actividades" })
-    });
+  let data = await res.json();
 
-    let data = await res.json();
-
-    if(data.value){
-      data = data.value;
-    }
-
-    window.dataActividades = data;
-
-    window.listaActividades = [...new Set(data.map(r => r["ACTIVIDAD"]))];
-
-    document.getElementById("btnAgregar").disabled = false;
-
-    agregarActividad();
-
-  }catch(e){
-
-    console.error("ERROR:", e);
-    alert("Error cargando actividades");
-
+  if(data.value){
+    data = data.value;
   }
 
+  window.dataActividades = data;
+
+  window.listaActividades = [...new Set(data.map(r => r["ACTIVIDAD"]))];
+
+  document.getElementById("btnAgregar").disabled = false;
+
+  agregarActividad();
 }
 
 // 🔥 AGREGAR ACTIVIDAD
 function agregarActividad(){
-
-  if(!window.listaActividades){
-    alert("Cargando datos...");
-    return;
-  }
 
   let div = document.createElement("div");
   div.className="card";
@@ -181,34 +170,72 @@ function cargarPasos(select){
 
 }
 
-// 🔥 ENVIAR (aún debug)
-function enviar(){
+// 🔥 ENVIAR REAL
+async function enviar(){
 
-  let registros = [];
+  let data = {
+    fecha: fecha.value,
+    sede: sede.value,
+    cuadrilla: cuadrilla.value,
+    integrantes: integrantes.value,
+    registros:[]
+  };
 
-  document.querySelectorAll(".card").forEach(card=>{
+  let orden = 1;
+
+  for(let card of document.querySelectorAll(".card")){
 
     let actividad = card.querySelector(".actividad").value;
 
-    card.querySelectorAll(".paso").forEach((paso,i)=>{
+    for(let paso of card.querySelectorAll(".paso")){
 
       let file = paso.querySelector(".file").files[0];
 
-      registros.push({
+      if(!file){
+        alert("Faltan evidencias");
+        return;
+      }
+
+      let base64 = await toBase64(file);
+
+      data.registros.push({
         actividad,
-        orden:i+1,
+        orden: orden++,
         pregunta: paso.children[1].innerText,
         criterio: paso.children[3].innerText,
         evidencia: paso.children[5].innerText,
-        file
+        file:{
+          nombre:file.name,
+          tipo:file.type,
+          data: base64.split(",")[1]
+        }
       });
 
-    });
+    }
+  }
 
+  fetch(API_ENVIO,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(data)
+  })
+  .then(()=>{
+    alert("Gracias por contribuir con tu seguridad");
+    location.reload();
+  })
+  .catch(()=>{
+    alert("Error al enviar");
   });
 
-  console.log("ENVIANDO:", registros);
+}
 
+// BASE64
+function toBase64(file){
+  return new Promise(resolve=>{
+    let reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = ()=> resolve(reader.result);
+  });
 }
 
 // INICIO
