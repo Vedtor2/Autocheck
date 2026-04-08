@@ -32,22 +32,15 @@ button {
   border-radius:6px;
 }
 
-#loader { display:none; width:100%; background:#ccc; height:10px; margin-top:10px; }
-#bar { width:0%; height:100%; background:green; }
-
-#offline {
-  display:none;
-  background:red;
-  color:white;
-  padding:10px;
-  text-align:center;
+.paso {
+  border-top:1px dashed #aaa;
+  margin-top:10px;
+  padding-top:10px;
 }
 </style>
 </head>
 
 <body>
-
-<div id="offline">SIN CONEXIÓN - se enviará automáticamente</div>
 
 <div class="container">
 
@@ -79,13 +72,11 @@ button {
 <button onclick="agregarActividad()">Agregar Actividad</button>
 <button onclick="enviar()">Enviar</button>
 
-<div id="loader"><div id="bar"></div></div>
-
 </div>
 
 <script>
 
-// 🔥 ENDPOINTS SEPARADOS
+// 🔥 ENDPOINTS
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1";
@@ -93,226 +84,115 @@ const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.
 // FECHA AUTOMÁTICA
 document.getElementById("fecha").value = new Date().toISOString().split('T')[0];
 
-// OFFLINE
-window.addEventListener("offline", ()=> {
-  document.getElementById("offline").style.display="block";
-});
-
-window.addEventListener("online", ()=> {
-  document.getElementById("offline").style.display="none";
-  enviarPendientes();
-});
-
 // 🔥 CARGAR ACTIVIDADES
 async function cargarActividades(){
 
-  try{
+  const res = await fetch(API_ACTIVIDADES,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ tipo:"actividades" })
+  });
 
-    const res = await fetch(API_ACTIVIDADES,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ tipo:"actividades" })
-    });
+  const data = await res.json();
 
-    const data = await res.json();
+  console.log("DATA:", data);
 
-    console.log("DATA ACTIVIDADES:", data);
+  // 🔥 GUARDAR TODO (IMPORTANTE)
+  window.dataActividades = data;
 
-    let actividades = [];
-
-    data.forEach(row => {
-      if(row.ACTIVIDAD){
-        actividades.push(row.ACTIVIDAD);
-      }
-    });
-
-    actividades = [...new Set(actividades)];
-
-    window.listaActividades = actividades;
-
-    agregarActividad();
-
-  }catch(e){
-    console.error("Error:", e);
-    alert("No se pudieron cargar actividades");
-  }
+  // 🔥 ACTIVIDADES ÚNICAS
+  window.listaActividades = [...new Set(data.map(r => r.ACTIVIDAD))];
 
 }
 
-// AGREGAR ACTIVIDAD
+// 🔥 AGREGAR ACTIVIDAD
 function agregarActividad(){
 
   let div = document.createElement("div");
   div.className="card";
 
-  let opciones = "";
+  let opciones = `<option value="">Seleccione actividad</option>`;
 
-  if(window.listaActividades){
-    window.listaActividades.forEach(a=>{
-      opciones += `<option>${a}</option>`;
-    });
-  }
+  window.listaActividades.forEach(a=>{
+    opciones += `<option>${a}</option>`;
+  });
 
   div.innerHTML = `
     <label>Actividad</label>
-    <select class="actividad">
+    <select class="actividad" onchange="cargarPasos(this)">
       ${opciones}
     </select>
-
-    <label>Evidencia</label>
-    <input type="file" accept="image/*,video/*" class="file">
   `;
 
   document.getElementById("actividades").appendChild(div);
 }
 
-// OBTENER DATA
-function getData(){
+// 🔥 CARGAR PASOS AUTOMÁTICOS
+function cargarPasos(select){
 
-  let registros=[];
+  let actividad = select.value;
 
-  document.querySelectorAll(".card").forEach((card,i)=>{
+  if(!actividad) return;
 
-    let file = card.querySelector(".file").files[0];
+  let contenedor = select.parentElement;
 
-    registros.push({
-      actividad: card.querySelector(".actividad").value,
-      orden:i+1,
-      file:file
-    });
+  // eliminar pasos anteriores
+  contenedor.querySelectorAll(".paso").forEach(e => e.remove());
+
+  let pasos = window.dataActividades.filter(r => r.ACTIVIDAD === actividad);
+
+  pasos.forEach((p, i)=>{
+
+    let div = document.createElement("div");
+    div.className = "paso";
+
+    div.innerHTML = `
+      <label>Paso ${i+1}</label>
+      <div>${p.D || ""}</div>
+
+      <label>Criterio Visible</label>
+      <div>${p.E || ""}</div>
+
+      <label>Evidencia requerida</label>
+      <div>${p.F || ""}</div>
+
+      <input type="file" class="file">
+    `;
+
+    contenedor.appendChild(div);
 
   });
 
-  return {
-    fecha:fecha.value,
-    sede:sede.value,
-    cuadrilla:cuadrilla.value,
-    integrantes:integrantes.value,
-    registros
-  };
 }
 
-// VALIDAR
-function validar(data){
-
-  if(!data.cuadrilla || !data.sede){
-    alert("Completar datos generales");
-    return false;
-  }
-
-  if(data.registros.length===0){
-    alert("Agregar al menos una actividad");
-    return false;
-  }
-
-  for(let r of data.registros){
-    if(!r.file){
-      alert("Faltan evidencias");
-      return false;
-    }
-  }
-
-  return true;
-}
-
-// BARRA
-function avanzarBarra(){
-
-  let bar = document.getElementById("bar");
-  let width = 0;
-
-  let interval = setInterval(()=>{
-    width+=10;
-    bar.style.width = width+"%";
-    if(width>=100) clearInterval(interval);
-  },200);
-}
-
-// ENVIAR
+// 🔥 ENVIAR
 async function enviar(){
 
-  let data = getData();
+  let registros = [];
 
-  if(!validar(data)) return;
+  document.querySelectorAll(".card").forEach(card=>{
 
-  if(!navigator.onLine){
-    guardarOffline(data);
-    alert("Sin conexión, se enviará automáticamente");
-    return;
-  }
+    let actividad = card.querySelector(".actividad").value;
 
-  document.getElementById("loader").style.display="block";
-  avanzarBarra();
+    card.querySelectorAll(".paso").forEach((paso,i)=>{
 
-  let registrosFinal=[];
+      let file = paso.querySelector(".file").files[0];
 
-  for(let r of data.registros){
+      registros.push({
+        actividad: actividad,
+        orden: i+1,
+        d: paso.children[1].innerText,
+        e: paso.children[3].innerText,
+        f: paso.children[5].innerText,
+        file: file
+      });
 
-    let base64 = await toBase64(r.file);
-
-    registrosFinal.push({
-      actividad:r.actividad,
-      orden:r.orden,
-      c:"",
-      d:"",
-      e:"",
-      f:"",
-      file:{
-        name:r.file.name,
-        type:r.file.type,
-        data:base64.split(',')[1]
-      }
     });
-  }
 
-  data.registros = registrosFinal;
-
-  fetch(API_ENVIO,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify(data)
-  })
-  .then(()=>{
-    alert("Gracias por contribuir con tu seguridad");
-    localStorage.removeItem("pendiente");
-    location.reload();
-  })
-  .catch(()=>{
-    guardarOffline(data);
   });
 
-}
+  console.log("ENVIANDO:", registros);
 
-// OFFLINE STORAGE
-function guardarOffline(data){
-  localStorage.setItem("pendiente", JSON.stringify(data));
-}
-
-// REINTENTO AUTOMÁTICO
-function enviarPendientes(){
-
-  let data = localStorage.getItem("pendiente");
-
-  if(data){
-    fetch(API_ENVIO,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:data
-    })
-    .then(()=>{
-      alert("Datos enviados automáticamente");
-      localStorage.removeItem("pendiente");
-    });
-  }
-}
-
-// BASE64
-function toBase64(file){
-  return new Promise(res=>{
-    let reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload=()=>res(reader.result);
-  });
 }
 
 // INICIO
