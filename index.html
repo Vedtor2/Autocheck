@@ -37,6 +37,25 @@ button {
   margin-top:10px;
   padding-top:10px;
 }
+
+/* 🔥 PROGRESO */
+#progressContainer {
+  width:100%;
+  background:#ddd;
+  border-radius:10px;
+  margin-top:15px;
+  display:none;
+}
+
+#progressBar {
+  width:0%;
+  height:20px;
+  background:#4caf50;
+  border-radius:10px;
+  text-align:center;
+  color:white;
+  font-size:12px;
+}
 </style>
 </head>
 
@@ -70,15 +89,22 @@ button {
 <div id="actividades"></div>
 
 <button id="btnAgregar" onclick="agregarActividad()" disabled>Agregar Actividad</button>
-<button onclick="enviar()">Enviar</button>
+<button id="btnEnviar" onclick="enviar()">Enviar</button>
+
+<div id="progressContainer">
+  <div id="progressBar">0%</div>
+</div>
 
 </div>
 
 <script>
 
-const API_ACTIVIDADES = "TU_ENDPOINT_ACTIVIDADES";
-const API_ENVIO = "TU_ENDPOINT_ENVIO";
+// 🔥 ENDPOINTS
+const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
+const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
+
+// FECHA
 document.getElementById("fecha").value = new Date().toISOString().split('T')[0];
 
 // 🔥 CARGAR ACTIVIDADES
@@ -138,7 +164,6 @@ function cargarPasos(select){
 
     div.innerHTML = `
       <label>Paso ${i+1}</label>
-
       <div>${p["ETAPAS DE LA ACTIVIDAD"]}</div>
 
       <label>Pregunta</label>
@@ -166,8 +191,18 @@ function toBase64(file){
   });
 }
 
+// 🔥 PROGRESO
+function updateProgress(p){
+  let bar = document.getElementById("progressBar");
+  bar.style.width = p + "%";
+  bar.innerText = p + "%";
+}
+
 // 🔥 ENVÍO
 async function enviar(){
+
+  document.getElementById("btnEnviar").disabled = true;
+  document.getElementById("progressContainer").style.display = "block";
 
   let data = {
     fecha: fecha.value,
@@ -177,10 +212,19 @@ async function enviar(){
     registros:[]
   };
 
+  let totalFiles = 0;
+
+  for(let card of document.querySelectorAll(".card")){
+    for(let paso of card.querySelectorAll(".paso")){
+      totalFiles += paso.querySelector(".file").files.length;
+    }
+  }
+
+  let processed = 0;
+
   for(let card of document.querySelectorAll(".card")){
 
     let actividad = card.querySelector(".actividad").value;
-
     let pasos = card.querySelectorAll(".paso");
 
     for(let i=0; i<pasos.length; i++){
@@ -217,22 +261,25 @@ async function enviar(){
           }
         });
 
+        processed++;
+        updateProgress(Math.round((processed / totalFiles) * 100));
       }
     }
   }
 
-  fetch(API_ENVIO,{
+  await fetch(API_ENVIO,{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify(data)
-  })
-  .then(()=>{
-    alert("Gracias por contribuir con tu seguridad");
-    location.reload();
   });
 
+  updateProgress(100);
+
+  alert("Gracias por contribuir con tu seguridad");
+  location.reload();
 }
 
+// INIT
 window.onload = ()=>{
   cargarActividades();
 }
