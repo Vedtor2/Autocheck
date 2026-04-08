@@ -38,7 +38,6 @@ button {
   padding-top:10px;
 }
 
-/* 🔥 PROGRESO */
 #progressContainer {
   width:100%;
   background:#ddd;
@@ -54,7 +53,6 @@ button {
   border-radius:10px;
   text-align:center;
   color:white;
-  font-size:12px;
 }
 </style>
 </head>
@@ -99,15 +97,12 @@ button {
 
 <script>
 
-// 🔥 ENDPOINTS
-const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
+const API_ACTIVIDADES = "TU_ENDPOINT_ACTIVIDADES";
+const API_ENVIO = "TU_ENDPOINT_ENVIO";
 
-const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
-
-// FECHA
 document.getElementById("fecha").value = new Date().toISOString().split('T')[0];
 
-// 🔥 CARGAR ACTIVIDADES
+// Cargar actividades
 async function cargarActividades(){
 
   const res = await fetch(API_ACTIVIDADES,{
@@ -126,7 +121,6 @@ async function cargarActividades(){
   agregarActividad();
 }
 
-// 🔥 AGREGAR ACTIVIDAD
 function agregarActividad(){
 
   let div = document.createElement("div");
@@ -147,7 +141,6 @@ function agregarActividad(){
   document.getElementById("actividades").appendChild(div);
 }
 
-// 🔥 CARGAR PASOS
 function cargarPasos(select){
 
   let actividad = select.value;
@@ -182,7 +175,6 @@ function cargarPasos(select){
   });
 }
 
-// 🔥 BASE64
 function toBase64(file){
   return new Promise(resolve=>{
     let reader = new FileReader();
@@ -191,14 +183,12 @@ function toBase64(file){
   });
 }
 
-// 🔥 PROGRESO
 function updateProgress(p){
   let bar = document.getElementById("progressBar");
   bar.style.width = p + "%";
   bar.innerText = p + "%";
 }
 
-// 🔥 ENVÍO
 async function enviar(){
 
   document.getElementById("btnEnviar").disabled = true;
@@ -214,17 +204,16 @@ async function enviar(){
 
   let totalFiles = 0;
 
-  for(let card of document.querySelectorAll(".card")){
-    for(let paso of card.querySelectorAll(".paso")){
-      totalFiles += paso.querySelector(".file").files.length;
-    }
-  }
+  document.querySelectorAll(".file").forEach(f=>{
+    totalFiles += f.files.length;
+  });
 
   let processed = 0;
 
   for(let card of document.querySelectorAll(".card")){
 
     let actividad = card.querySelector(".actividad").value;
+
     let pasos = card.querySelectorAll(".paso");
 
     for(let i=0; i<pasos.length; i++){
@@ -275,11 +264,12 @@ async function enviar(){
 
   updateProgress(100);
 
-  alert("Gracias por contribuir con tu seguridad");
-  location.reload();
+  setTimeout(()=>{
+    alert("Gracias por contribuir con tu seguridad");
+    location.reload();
+  },1000);
 }
 
-// INIT
 window.onload = ()=>{
   cargarActividades();
 }
