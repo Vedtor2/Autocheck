@@ -76,37 +76,47 @@ button {
 
 <script>
 
-// 🔥 ENDPOINTS
+// ENDPOINTS
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
-const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1";
-
-// FECHA AUTOMÁTICA
 document.getElementById("fecha").value = new Date().toISOString().split('T')[0];
 
 // 🔥 CARGAR ACTIVIDADES
 async function cargarActividades(){
 
-  const res = await fetch(API_ACTIVIDADES,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ tipo:"actividades" })
-  });
+  try{
 
-  const data = await res.json();
+    const res = await fetch(API_ACTIVIDADES,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ tipo:"actividades" })
+    });
 
-  console.log("DATA:", data);
+    const data = await res.json();
 
-  // 🔥 GUARDAR TODO (IMPORTANTE)
-  window.dataActividades = data;
+    console.log("DATA REAL:", data);
 
-  // 🔥 ACTIVIDADES ÚNICAS
-  window.listaActividades = [...new Set(data.map(r => r.ACTIVIDAD))];
+    window.dataActividades = data;
+
+    // 🔥 LISTA ÚNICA
+    window.listaActividades = [...new Set(data.map(r => r["ACTIVIDAD"]))];
+
+    console.log("ACTIVIDADES:", window.listaActividades);
+
+  }catch(e){
+    console.error("ERROR:", e);
+    alert("Error cargando actividades");
+  }
 
 }
 
 // 🔥 AGREGAR ACTIVIDAD
 function agregarActividad(){
+
+  if(!window.listaActividades){
+    alert("Aún no cargan las actividades");
+    return;
+  }
 
   let div = document.createElement("div");
   div.className="card";
@@ -127,7 +137,7 @@ function agregarActividad(){
   document.getElementById("actividades").appendChild(div);
 }
 
-// 🔥 CARGAR PASOS AUTOMÁTICOS
+// 🔥 CARGAR PASOS
 function cargarPasos(select){
 
   let actividad = select.value;
@@ -136,10 +146,11 @@ function cargarPasos(select){
 
   let contenedor = select.parentElement;
 
-  // eliminar pasos anteriores
   contenedor.querySelectorAll(".paso").forEach(e => e.remove());
 
-  let pasos = window.dataActividades.filter(r => r.ACTIVIDAD === actividad);
+  let pasos = window.dataActividades.filter(r => r["ACTIVIDAD"] === actividad);
+
+  console.log("PASOS:", pasos);
 
   pasos.forEach((p, i)=>{
 
@@ -148,13 +159,13 @@ function cargarPasos(select){
 
     div.innerHTML = `
       <label>Paso ${i+1}</label>
-      <div>${p.D || ""}</div>
+      <div>${p["PREGUNTA"] || ""}</div>
 
       <label>Criterio Visible</label>
-      <div>${p.E || ""}</div>
+      <div>${p["CRITERIO VISIBLE"] || ""}</div>
 
       <label>Evidencia requerida</label>
-      <div>${p.F || ""}</div>
+      <div>${p["EVIDENCIA ¿Qué evidencia necesito?"] || ""}</div>
 
       <input type="file" class="file">
     `;
@@ -165,8 +176,8 @@ function cargarPasos(select){
 
 }
 
-// 🔥 ENVIAR
-async function enviar(){
+// 🔥 ENVIAR (simplificado)
+function enviar(){
 
   let registros = [];
 
@@ -181,9 +192,9 @@ async function enviar(){
       registros.push({
         actividad: actividad,
         orden: i+1,
-        d: paso.children[1].innerText,
-        e: paso.children[3].innerText,
-        f: paso.children[5].innerText,
+        pregunta: paso.children[1].innerText,
+        criterio: paso.children[3].innerText,
+        evidencia: paso.children[5].innerText,
         file: file
       });
 
