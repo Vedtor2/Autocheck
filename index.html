@@ -2,66 +2,58 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Autocheck Técnico</title>
 
 <style>
-body { font-family: Arial; margin:10px; background:#f5f5f5; }
-.container { max-width:900px; margin:auto; }
+body { font-family: Arial; margin: 10px; }
+.container { max-width: 1000px; margin: auto; }
 
-.row { display:flex; gap:10px; }
-.row > div { flex:1; }
-.row > div:nth-child(3){ flex:0.7; }
+label { font-weight: bold; display: block; margin-top: 10px; }
 
-input, select, button {
-  width:100%;
-  padding:10px;
-  margin-top:5px;
+.row {
+  display:flex;
+  gap:10px;
+}
+
+.row div { flex:1; }
+.row div:nth-child(3){ flex:0.7; }
+
+input, select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+}
+
+.bloque {
+  border: 2px solid #000;
+  padding: 10px;
+  margin-top: 20px;
+}
+
+.fila {
+  border-bottom: 1px solid #ccc;
+  padding: 10px 0;
 }
 
 button {
+  margin-top: 10px;
+  padding: 10px;
   border:none;
   border-radius:8px;
   color:white;
-  font-weight:bold;
 }
 
-.btn-primary { background:#1976d2; }
 .btn-foto { background:#4caf50; }
 .btn-video { background:#ff5722; }
 .btn-preview { background:#607d8b; }
-
-.card {
-  background:white;
-  border-radius:10px;
-  padding:10px;
-  margin-top:10px;
-}
-
-.paso {
-  border-top:1px dashed #aaa;
-  margin-top:10px;
-  padding-top:10px;
-}
+.btn-delete { background:red; }
 
 .preview { display:none; }
-.preview img, .preview video { width:100%; }
 
-.estado { font-weight:bold; }
-
-#progressContainer {
-  display:none;
-  margin-top:10px;
-  background:#ddd;
-}
-
-#progressBar {
-  height:20px;
-  width:0%;
-  background:#4caf50;
-  color:white;
-  text-align:center;
+#mensaje {
+  margin-top: 15px;
+  text-align: center;
+  font-weight: bold;
 }
 </style>
 </head>
@@ -70,18 +62,18 @@ button {
 
 <div class="container">
 
-<h3>Autocheck Técnico</h3>
+<h2>Autocheck Técnico</h2>
 
 <div class="row">
   <div>
-    <label>Fecha</label>
+    <label>Fecha:</label>
     <input type="date" id="fecha">
   </div>
 
   <div>
-    <label>Sede</label>
+    <label>Sede:</label>
     <select id="sede" onchange="this.blur()">
-      <option value="">Seleccione</option>
+      <option value="">Seleccione...</option>
       <option>Chincha</option>
       <option>Pisco</option>
       <option>Ica</option>
@@ -93,22 +85,22 @@ button {
   </div>
 
   <div>
-    <label>Cuadrilla</label>
+    <label>Cuadrilla:</label>
     <input type="text" id="cuadrilla">
   </div>
 </div>
 
-<label>Integrantes</label>
+<label>Integrantes:</label>
 <input type="text" id="integrantes">
 
-<div id="actividades"></div>
+<div id="formularios"></div>
 
-<button class="btn-primary" onclick="agregarActividad()">Agregar Actividad</button>
-<button class="btn-primary" onclick="enviar()">Enviar</button>
+<label>Agregar actividad:</label>
+<select id="selectorActividad">
+  <option value="">Seleccione actividad</option>
+</select>
 
-<div id="progressContainer">
-  <div id="progressBar">0%</div>
-</div>
+<button onclick="enviar()">Enviar</button>
 
 <div id="mensaje"></div>
 
@@ -116,166 +108,145 @@ button {
 
 <script>
 
-const API_ACTIVIDADES = "TU_ENDPOINT_ACTIVIDADES";
+const API_URL = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
+
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
-fecha.value = new Date().toISOString().split('T')[0];
+document.getElementById("fecha").valueAsDate = new Date();
 
-let dataActividades=[];
+let pasos = {};
 
 async function cargarActividades(){
-  let res = await fetch(API_ACTIVIDADES,{method:"POST"});
-  let data = await res.json();
-  if(data.value) data = data.value;
-  dataActividades = data;
+  const res = await fetch(API_URL);
+  const data = await res.json();
+
+  pasos = data.pasos;
+
+  const selector = document.getElementById("selectorActividad");
+
+  data.actividades.forEach(a => {
+    let opt = document.createElement("option");
+    opt.value = a;
+    opt.textContent = a;
+    selector.appendChild(opt);
+  });
 }
 
-function agregarActividad(){
+cargarActividades();
 
-  let div=document.createElement("div");
-  div.className="card";
+selectorActividad.addEventListener("change", function(){
+  if(!this.value) return;
+  crearFormulario(this.value);
+  this.value = "";
+});
 
-  let opciones=`<option>Seleccione</option>`;
-  [...new Set(dataActividades.map(x=>x.ACTIVIDAD))]
-  .forEach(a=>opciones+=`<option>${a}</option>`);
+function crearFormulario(actividad){
 
-  div.innerHTML=`<select onchange="cargarPasos(this)">${opciones}</select>`;
-  actividades.appendChild(div);
-}
+  let cont = document.getElementById("formularios");
 
-function cargarPasos(select){
+  let bloque = document.createElement("div");
+  bloque.className = "bloque";
 
-  let cont=select.parentElement;
-  cont.querySelectorAll(".paso").forEach(e=>e.remove());
+  let html = `<h3>${actividad}</h3>`;
 
-  let pasos=dataActividades.filter(x=>x.ACTIVIDAD===select.value);
+  pasos[actividad].forEach((p,i) => {
 
-  pasos.forEach((p,i)=>{
+    html += `
+    <div class="fila">
 
-    let div=document.createElement("div");
-    div.className="paso";
+      <div><b>${i+1}. ${p.d}</b></div>
+      <div><b>Criterio:</b> ${p.e}</div>
+      <div><b>Evidencia:</b> ${p.f}</div>
 
-    div.innerHTML=`
-      <b>Paso ${i+1}</b>
-
-      <div><b>Etapa:</b> ${p["ETAPAS DE LA ACTIVIDAD"]}</div>
-      <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
-      <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
-      <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
-
-      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="preview(this)">
-      <input type="file" class="video" accept="video/*" style="display:none" onchange="preview(this)">
+      <input type="file" class="file-foto" accept="image/*" capture="environment" style="display:none" onchange="preview(this)">
+      <input type="file" class="file-video" accept="video/*" style="display:none" onchange="preview(this)">
 
       <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷</button>
       <button class="btn-video" onclick="this.previousElementSibling.click()">🎥</button>
       <button class="btn-preview" onclick="toggle(this)">👁</button>
 
       <div class="preview"></div>
-    `;
 
-    cont.appendChild(div);
+    </div>`;
   });
+
+  html += `<button class="btn-delete" onclick="this.parentElement.remove()">Eliminar</button>`;
+
+  bloque.innerHTML = html;
+  cont.appendChild(bloque);
+
+  cont.appendChild(document.getElementById("selectorActividad"));
 }
 
 function preview(input){
 
-  let paso=input.parentElement;
-  let preview=paso.querySelector(".preview");
+  let fila = input.parentElement;
+  let preview = fila.querySelector(".preview");
 
-  let file=input.files[0];
-  let url=URL.createObjectURL(file);
+  let file = input.files[0];
+  let url = URL.createObjectURL(file);
 
-  preview.innerHTML=file.type.includes("image")
-    ? `<img src="${url}">`
-    : `<video src="${url}" controls></video>`;
+  preview.innerHTML = file.type.includes("image")
+    ? `<img src="${url}" width="100%">`
+    : `<video src="${url}" controls width="100%"></video>`;
 }
 
 function toggle(btn){
-
-  let preview=btn.parentElement.querySelector(".preview");
-
-  preview.style.display =
-    preview.style.display==="block" ? "none":"block";
+  let preview = btn.parentElement.querySelector(".preview");
+  preview.style.display = preview.style.display==="block" ? "none":"block";
 }
 
-function toBase64(file){
-  return new Promise(r=>{
-    let reader=new FileReader();
-    reader.onload=()=>r(reader.result.split(",")[1]);
+function fileToBase64(file){
+  return new Promise((resolve)=>{
+    let reader = new FileReader();
     reader.readAsDataURL(file);
+    reader.onload = ()=>resolve(reader.result.split(",")[1]);
   });
-}
-
-function progress(p){
-  progressContainer.style.display="block";
-  progressBar.style.width=Math.round(p)+"%";
-  progressBar.innerText=Math.round(p)+"%";
 }
 
 async function enviar(){
 
-  mensaje.innerText="⏳ Enviando...";
+  const bloques = document.querySelectorAll(".bloque");
 
-  let pasos=document.querySelectorAll(".paso");
-  let registros=[];
+  for (let bloque of bloques){
 
-  for(let i=0;i<pasos.length;i++){
+    let actividad = bloque.querySelector("h3").innerText;
+    let filas = bloque.querySelectorAll(".fila");
 
-    let paso=pasos[i];
-    let actividad=paso.closest(".card").querySelector("select").value;
+    for (let i = 0; i < filas.length; i++){
 
-    let file=paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
+      let fila = filas[i];
 
-    if(!file){
-      mensaje.innerText=`Falta evidencia en paso ${i+1}`;
-      return;
-    }
+      let foto = fila.querySelector(".file-foto").files[0];
+      let video = fila.querySelector(".file-video").files[0];
 
-    let base64=await toBase64(file);
-
-    registros.push({
-      actividad,
-      numero:i+1,
-      etapa: paso.children[1].innerText.replace("Etapa: ",""),
-      pregunta: paso.children[2].innerText.replace("Pregunta: ",""),
-      criterio: paso.children[3].innerText.replace("Criterio: ",""),
-      evidencia: paso.children[4].innerText.replace("Evidencia: ",""),
-      file:{
-        name:`${i+1}-${actividad}`,
-        type:file.type,
-        data:base64
+      if(!foto && !video){
+        mensaje.innerText = `Falta evidencia en ${actividad} paso ${i+1}`;
+        return;
       }
-    });
-
-    progress((i+1)/pasos.length*80);
+    }
   }
 
-  const res = await fetch(API_ENVIO,{
+  mensaje.innerText="Enviando...";
+
+  // 🔴 NO TOCAR FLUJO ORIGINAL
+  fetch(API_ENVIO,{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({
       fecha:fecha.value,
       sede:sede.value,
       cuadrilla:cuadrilla.value,
-      integrantes:integrantes.value,
-      registros
+      integrantes:integrantes.value
     })
-  });
-
-  if(!res.ok){
-    mensaje.innerText="Error al enviar";
-    return;
-  }
-
-  progress(100);
-
-  setTimeout(()=>{
+  })
+  .then(()=> {
     mensaje.innerText="Gracias por contribuir con tu seguridad";
     location.reload();
-  },1000);
+  })
+  .catch(()=>{
+    mensaje.innerText="Error conexión";
+  });
 }
-
-cargarActividades();
 
 </script>
 
