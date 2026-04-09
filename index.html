@@ -3,21 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Autocheck Técnico</title>
 
 <style>
 body { font-family: Arial; margin:10px; background:#f5f5f5; }
 .container { max-width:900px; margin:auto; }
 
-.row {
-  display:flex;
-  gap:10px;
-}
-
-.row > div {
-  flex:1;
-}
+.row { display:flex; gap:10px; }
+.row > div { flex:1; }
 
 input, select, button {
   width:100%;
@@ -74,6 +67,15 @@ button {
   text-align:center;
   color:white;
 }
+
+#mensaje {
+  text-align:center;
+  margin-top:10px;
+  font-weight:bold;
+}
+.loading { color:orange; }
+.ok { color:green; }
+.error { color:red; }
 </style>
 </head>
 
@@ -127,24 +129,42 @@ button {
 
 <script>
 
-const API_ACTIVIDADES = "TU_ENDPOINT_ACTIVIDADES";
-const API_ENVIO = "TU_ENDPOINT_ENVIO";
+// 🔥 TUS ENDPOINTS (NO CAMBIAR)
+const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
-fecha.value = new Date().toISOString().split('T')[0];
+const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
-let dataActividades=[];
+document.getElementById("fecha").valueAsDate = new Date();
+
+let dataActividades = [];
 
 // 🔹 CARGAR ACTIVIDADES
 async function cargarActividades(){
-  let res = await fetch(API_ACTIVIDADES,{method:"POST"});
-  let data = await res.json();
-  if(data.value) data = data.value;
+  try{
+    const res = await fetch(API_ACTIVIDADES,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({})
+    });
 
-  dataActividades = data;
+    let data = await res.json();
+    if(data.value) data = data.value;
+
+    dataActividades = data;
+
+  }catch(e){
+    mostrarMensaje("Error cargando actividades","error");
+    console.error(e);
+  }
 }
 
-// 🔹 AGREGAR
+// 🔹 AGREGAR ACTIVIDAD
 function agregarActividad(){
+
+  if(dataActividades.length===0){
+    mostrarMensaje("Aún no cargan las actividades","error");
+    return;
+  }
 
   let div = document.createElement("div");
   div.className="card";
@@ -162,7 +182,7 @@ function agregarActividad(){
   actividades.appendChild(div);
 }
 
-// 🔹 PASOS
+// 🔹 CARGAR PASOS
 function cargarPasos(select){
 
   let cont = select.parentElement;
@@ -183,10 +203,8 @@ function cargarPasos(select){
       <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
       <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
 
-      <input type="file" class="foto" accept="image/*" capture style="display:none" onchange="preview(this)">
-      
-      <!-- 🔥 FIX VIDEO SAMSUNG -->
-      <input type="file" class="video" accept="video/*" capture style="display:none" onchange="preview(this)">
+      <input type="file" class="foto" accept="image/*" style="display:none" onchange="preview(this)">
+      <input type="file" class="video" accept="video/*" style="display:none" onchange="preview(this)">
 
       <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
       <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
@@ -241,65 +259,83 @@ function progress(p){
   progressBar.innerText=Math.round(p)+"%";
 }
 
+// 🔹 MENSAJE
+function mostrarMensaje(txt,tipo){
+  mensaje.innerText=txt;
+  mensaje.className=tipo;
+}
+
 // 🔹 ENVIAR
 async function enviar(){
 
-  mensaje.innerText="⏳ Enviando información...";
+  mostrarMensaje("⏳ Enviando información...","loading");
 
   let pasos = document.querySelectorAll(".paso");
   let registros=[];
 
-  for(let i=0;i<pasos.length;i++){
+  try{
 
-    let paso = pasos[i];
-    let actividad = paso.closest(".card").querySelector("select").value;
+    for(let i=0;i<pasos.length;i++){
 
-    let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
+      let paso = pasos[i];
+      let actividad = paso.closest(".card").querySelector("select").value;
 
-    if(!file){
-      mensaje.innerText="Falta evidencia";
-      return;
+      let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
+
+      if(!file){
+        mostrarMensaje("Falta evidencia","error");
+        return;
+      }
+
+      let base64 = await toBase64(file);
+
+      registros.push({
+        actividad,
+        numero:i+1,
+        etapa: paso.children[1].innerText.replace("Etapa: ",""),
+        pregunta: paso.children[2].innerText.replace("Pregunta: ",""),
+        criterio: paso.children[3].innerText.replace("Criterio: ",""),
+        evidencia: paso.children[4].innerText.replace("Evidencia: ",""),
+        file:{
+          name:`${i+1}-${actividad}`,
+          type:file.type,
+          data:base64
+        }
+      });
+
+      progress((i+1)/pasos.length*80);
     }
 
-    let base64 = await toBase64(file);
-
-    registros.push({
-      actividad,
-      numero:i+1,
-      etapa: paso.children[1].innerText.replace("Etapa: ",""),
-      pregunta: paso.children[2].innerText.replace("Pregunta: ",""),
-      criterio: paso.children[3].innerText.replace("Criterio: ",""),
-      evidencia: paso.children[4].innerText.replace("Evidencia: ",""),
-      file:{
-        name:`${i+1}-${actividad}`,
-        type:file.type,
-        data:base64
-      }
+    const res = await fetch(API_ENVIO,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        fecha:fecha.value,
+        sede:sede.value,
+        cuadrilla:cuadrilla.value,
+        integrantes:integrantes.value,
+        registros
+      })
     });
 
-    progress((i+1)/pasos.length*80);
+    if(!res.ok){
+      throw new Error("Error HTTP");
+    }
+
+    progress(100);
+
+    setTimeout(()=>{
+      mostrarMensaje("Gracias por contribuir con tu seguridad","ok");
+      location.reload();
+    },1000);
+
+  }catch(e){
+    console.error(e);
+    mostrarMensaje("Error al enviar","error");
   }
-
-  await fetch(API_ENVIO,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
-      fecha:fecha.value,
-      sede:sede.value,
-      cuadrilla:cuadrilla.value,
-      integrantes:integrantes.value,
-      registros
-    })
-  });
-
-  progress(100);
-
-  setTimeout(()=>{
-    mensaje.innerText="Gracias por contribuir con tu seguridad";
-    location.reload();
-  },1000);
 }
 
+// 🔥 INICIO
 cargarActividades();
 
 </script>
