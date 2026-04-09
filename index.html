@@ -35,12 +35,6 @@ button {
   border-radius:6px;
 }
 
-.paso {
-  border-top:1px dashed #aaa;
-  margin-top:10px;
-  padding-top:10px;
-}
-
 .preview { display:none; }
 
 #progressContainer {
@@ -59,8 +53,6 @@ button {
   text-align:center;
   color:white;
 }
-
-#loader { display:none; text-align:center; }
 </style>
 </head>
 
@@ -70,18 +62,12 @@ button {
 
 <h2>Autocheck Técnico</h2>
 
-<label>Fecha</label>
 <input type="date" id="fecha">
+<input type="text" id="cuadrilla" placeholder="Cuadrilla">
+<input type="text" id="integrantes" placeholder="Integrantes">
 
-<label>Cuadrilla</label>
-<input type="text" id="cuadrilla">
-
-<label>Integrantes</label>
-<input type="text" id="integrantes">
-
-<label>Sede</label>
 <select id="sede" onchange="this.blur()">
-<option value="">Seleccione</option>
+<option value="">Seleccione sede</option>
 <option>Chincha</option>
 <option>Pisco</option>
 <option>Ica</option>
@@ -93,14 +79,12 @@ button {
 
 <div id="actividades"></div>
 
-<button id="btnAgregar" onclick="agregarActividad()" disabled>Agregar Actividad</button>
+<button id="btnAgregar" onclick="agregarActividad()">Agregar Actividad</button>
 <button id="btnEnviar" onclick="enviar()">Enviar</button>
 
 <div id="progressContainer">
   <div id="progressBar">0%</div>
 </div>
-
-<div id="loader">⏳ Enviando...</div>
 
 </div>
 
@@ -113,20 +97,35 @@ const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.
 
 fecha.value = new Date().toISOString().split('T')[0];
 
-// 🔥 ACTIVIDADES
+// 🔥 CARGAR ACTIVIDADES (ROBUSTO)
 async function cargarActividades(){
   try{
-    let res = await fetch(API_ACTIVIDADES,{method:"POST"});
-    let data = await res.json();
+    const res = await fetch(API_ACTIVIDADES, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({})
+    });
+
+    let text = await res.text();
+    let data;
+
+    try { data = JSON.parse(text); }
+    catch { console.error("Respuesta inválida:", text); return; }
+
     if(data.value) data = data.value;
 
-    window.dataActividades = data;
-    window.listaActividades = [...new Set(data.map(x=>x.ACTIVIDAD))];
+    if(!Array.isArray(data)){
+      console.error("Formato incorrecto:", data);
+      return;
+    }
 
-    btnAgregar.disabled = false;
+    window.dataActividades = data;
+    window.listaActividades = [...new Set(data.map(x => x.ACTIVIDAD))];
+
     agregarActividad();
+
   }catch(e){
-    alert("Error cargando actividades");
+    console.error("Error actividades:", e);
   }
 }
 
@@ -134,14 +133,13 @@ async function cargarActividades(){
 function agregarActividad(){
 
   let div = document.createElement("div");
-  div.className="card";
+  div.className = "card";
 
   let opciones = `<option value="">Seleccione actividad</option>`;
-  listaActividades.forEach(a=> opciones+=`<option>${a}</option>`);
+  (window.listaActividades || []).forEach(a => opciones += `<option>${a}</option>`);
 
   div.innerHTML = `
-    <label>Actividad</label>
-    <select onchange="this.blur();cargarPasos(this)">
+    <select onchange="this.blur(); cargarPasos(this)">
       ${opciones}
     </select>
   `;
@@ -149,13 +147,13 @@ function agregarActividad(){
   actividades.appendChild(div);
 }
 
-// 🔥 PASOS
+// 🔥 CARGAR PASOS
 function cargarPasos(select){
 
   let cont = select.parentElement;
-  cont.querySelectorAll(".paso").forEach(e=>e.remove());
+  cont.querySelectorAll(".paso").forEach(e => e.remove());
 
-  let pasos = dataActividades.filter(x=>x.ACTIVIDAD==select.value);
+  let pasos = dataActividades.filter(x => x.ACTIVIDAD === select.value);
 
   pasos.forEach((p,i)=>{
 
@@ -163,16 +161,17 @@ function cargarPasos(select){
     div.className="paso";
 
     div.innerHTML = `
-      <label>Paso ${i+1}</label>
       <div>${p["ETAPAS DE LA ACTIVIDAD"]}</div>
 
-      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
-      <input type="file" class="video" accept="video/*" style="display:none" onchange="archivo(this)">
+      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="preview(this)">
+      
+      <!-- 🔥 VIDEO REAL -->
+      <input type="file" class="video" accept="video/*" capture="environment" style="display:none" onchange="preview(this)">
 
       <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
       <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
 
-      <button class="btn-ver" onclick="togglePreview(this)">👁 Ver evidencia</button>
+      <button class="btn-ver" onclick="toggle(this)">👁 Ver evidencia</button>
 
       <div class="preview"></div>
     `;
@@ -181,12 +180,11 @@ function cargarPasos(select){
   });
 }
 
-// 🔥 ARCHIVO
-function archivo(input){
+// 🔥 PREVIEW INLINE
+function preview(input){
 
   let paso = input.parentElement;
   let preview = paso.querySelector(".preview");
-  preview.innerHTML="";
 
   let file = input.files[0];
   if(!file) return;
@@ -202,14 +200,14 @@ function archivo(input){
   preview.style.display="none";
 }
 
-// 🔥 TOGGLE PREVIEW
-function togglePreview(btn){
+// 🔥 TOGGLE
+function toggle(btn){
 
   let preview = btn.parentElement.querySelector(".preview");
 
   if(preview.style.display=="none"){
     preview.style.display="block";
-    btn.innerText="🔽 Ocultar evidencia";
+    btn.innerText="🔽 Ocultar";
   }else{
     preview.style.display="none";
     btn.innerText="👁 Ver evidencia";
@@ -227,18 +225,15 @@ function toBase64(file){
 
 // 🔥 PROGRESO
 function progress(p){
+  progressContainer.style.display="block";
   progressBar.style.width=p+"%";
   progressBar.innerText=p+"%";
 }
 
-// 🔥 ENVIAR
+// 🔥 ENVIAR FUNCIONAL
 async function enviar(){
 
-  btnEnviar.disabled=true;
-  loader.style.display="block";
-  progressContainer.style.display="block";
-
-  let data={
+  let data = {
     fecha:fecha.value,
     cuadrilla:cuadrilla.value,
     integrantes:integrantes.value,
@@ -246,61 +241,66 @@ async function enviar(){
     registros:[]
   };
 
-  let archivos=document.querySelectorAll(".foto,.video");
-  let total=0;
-  archivos.forEach(f=> total+=f.files.length);
+  let archivos = document.querySelectorAll(".foto, .video");
+  let total = 0;
+  archivos.forEach(f => total += f.files.length);
 
-  let count=0;
+  if(total === 0){
+    alert("Debe subir evidencia");
+    return;
+  }
+
+  let count = 0;
 
   for(let paso of document.querySelectorAll(".paso")){
 
-    let files=[
+    let files = [
       ...paso.querySelector(".foto").files,
       ...paso.querySelector(".video").files
     ];
 
-    let etapa=paso.children[1].innerText;
+    let etapa = paso.children[0].innerText;
 
     for(let file of files){
 
-      let base64=await toBase64(file);
+      let base64 = await toBase64(file);
 
       data.registros.push({
         etapa,
-        file:{ tipo:file.type, data:base64.split(",")[1] }
+        file:{
+          tipo:file.type,
+          data:base64.split(",")[1]
+        }
       });
 
       count++;
-      progress(Math.round((count/total)*70));
+      progress(Math.round((count/total)*80));
     }
   }
 
   try{
-    let res=await fetch(API_ENVIO,{
+    let res = await fetch(API_ENVIO,{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify(data)
+      body: JSON.stringify(data)
     });
 
     if(!res.ok){
-      throw new Error("Error en flujo");
+      throw new Error("No llegó");
     }
 
     progress(100);
 
-    setTimeout(()=>{
-      alert("Enviado correctamente");
-      location.reload();
-    },1000);
+    alert("Enviado correctamente");
+    location.reload();
 
   }catch(e){
-    alert("ERROR: no llegó a Power Automate");
+    alert("Error envío");
     console.error(e);
-    btnEnviar.disabled=false;
   }
 }
 
-window.onload=cargarActividades;
+window.onload = cargarActividades;
 
 </script>
 
