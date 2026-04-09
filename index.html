@@ -9,11 +9,14 @@
 body { font-family: Arial; margin:10px; }
 .container { max-width:600px; margin:auto; }
 
+.row { display:flex; gap:5px; }
+.row input { flex:1; }
+
 input, select, button {
   width:100%;
-  padding:10px;
+  padding:8px;
   margin-top:5px;
-  font-size:16px;
+  font-size:14px;
 }
 
 button {
@@ -40,13 +43,18 @@ button {
   padding-top:10px;
 }
 
+.estado {
+  font-weight:bold;
+  margin-top:5px;
+}
+
 .preview { display:none; }
 
 #progressContainer {
   width:100%;
   background:#ddd;
   border-radius:10px;
-  margin-top:15px;
+  margin-top:10px;
   display:none;
 }
 
@@ -65,11 +73,13 @@ button {
 
 <div class="container">
 
-<h2>Autocheck Técnico</h2>
+<h3>Autocheck Técnico</h3>
 
+<div class="row">
 <input type="date" id="fecha">
 <input type="text" id="cuadrilla" placeholder="Cuadrilla">
 <input type="text" id="integrantes" placeholder="Integrantes">
+</div>
 
 <select id="sede" onchange="this.blur()">
 <option value="">Seleccione sede</option>
@@ -84,8 +94,8 @@ button {
 
 <div id="actividades"></div>
 
-<button id="btnAgregar" onclick="agregarActividad()">Agregar Actividad</button>
-<button id="btnEnviar" onclick="enviar()">Enviar</button>
+<button onclick="agregarActividad()">Agregar Actividad</button>
+<button onclick="enviar()">Enviar</button>
 
 <div id="progressContainer">
   <div id="progressBar">0%</div>
@@ -95,7 +105,7 @@ button {
 
 <script>
 
-// 🔥 ENDPOINTS (SIN CAMBIOS)
+// ENDPOINTS (NO CAMBIAR)
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
@@ -104,24 +114,14 @@ fecha.value = new Date().toISOString().split('T')[0];
 
 // 🔥 CARGAR ACTIVIDADES
 async function cargarActividades(){
-  try{
-    let res = await fetch(API_ACTIVIDADES,{method:"POST"});
-    let text = await res.text();
+  let res = await fetch(API_ACTIVIDADES,{method:"POST"});
+  let data = await res.json();
+  if(data.value) data = data.value;
 
-    console.log("RESPUESTA:", text);
+  window.dataActividades = data;
+  window.listaActividades = [...new Set(data.map(x=>x.ACTIVIDAD))];
 
-    let data = JSON.parse(text);
-    if(data.value) data = data.value;
-
-    window.dataActividades = data;
-    window.listaActividades = [...new Set(data.map(x=>x.ACTIVIDAD))];
-
-    agregarActividad();
-
-  }catch(e){
-    console.error("ERROR ACTIVIDADES", e);
-    alert("Error cargando actividades");
-  }
+  agregarActividad();
 }
 
 // 🔥 AGREGAR ACTIVIDAD
@@ -134,7 +134,7 @@ function agregarActividad(){
   listaActividades.forEach(a => opciones += `<option>${a}</option>`);
 
   div.innerHTML = `
-    <select onchange="this.blur(); cargarPasos(this)">
+    <select class="actividad" onchange="cargarPasos(this)">
       ${opciones}
     </select>
   `;
@@ -142,7 +142,7 @@ function agregarActividad(){
   actividades.appendChild(div);
 }
 
-// 🔥 CARGAR PASOS (YA CORREGIDO)
+// 🔥 PASOS CORREGIDOS
 function cargarPasos(select){
 
   let cont = select.parentElement;
@@ -157,15 +157,13 @@ function cargarPasos(select){
 
     div.innerHTML = `
       <b>Paso ${i+1}</b>
-      <div>${p["ETAPAS DE LA ACTIVIDAD"]}</div>
-      <div>${p["PREGUNTA"]}</div>
-      <div>${p["CRITERIO VISIBLE"]}</div>
-      <div>${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
 
-      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="preview(this)">
-      
-      <!-- 🔥 VIDEO REAL -->
-      <input type="file" class="video" accept="video/*" style="display:none" onchange="preview(this)">
+      <div><b>Etapa:</b> ${p["ETAPAS DE LA ACTIVIDAD"]}</div>
+      <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
+      <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
+
+      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
+      <input type="file" class="video" accept="video/*" style="display:none" onchange="archivo(this)">
 
       <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
       <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
@@ -173,17 +171,19 @@ function cargarPasos(select){
       <button class="btn-ver" onclick="toggle(this)">👁 Ver evidencia</button>
 
       <div class="preview"></div>
+      <div class="estado">❌ Falta evidencia</div>
     `;
 
     cont.appendChild(div);
   });
 }
 
-// 🔥 PREVIEW
-function preview(input){
+// 🔥 PREVIEW + VALIDACIÓN
+function archivo(input){
 
   let paso = input.parentElement;
   let preview = paso.querySelector(".preview");
+  let estado = paso.querySelector(".estado");
 
   let file = input.files[0];
   if(!file) return;
@@ -196,6 +196,9 @@ function preview(input){
     preview.innerHTML = `<video src="${url}" controls style="width:100%"></video>`;
   }
 
+  estado.innerHTML = "✔ Completo";
+  estado.style.color = "green";
+
   preview.style.display="none";
 }
 
@@ -205,7 +208,7 @@ function toggle(btn){
 
   if(preview.style.display=="none"){
     preview.style.display="block";
-    btn.innerText="🔽 Ocultar evidencia";
+    btn.innerText="🔽 Ocultar";
   }else{
     preview.style.display="none";
     btn.innerText="👁 Ver evidencia";
@@ -228,7 +231,7 @@ function progress(p){
   progressBar.innerText=p+"%";
 }
 
-// 🔥 ENVIAR CORRECTO
+// 🔥 ENVIAR CORREGIDO
 async function enviar(){
 
   let data = {
@@ -241,12 +244,10 @@ async function enviar(){
 
   let pasos = document.querySelectorAll(".paso");
 
-  let total = pasos.length;
-  let count = 0;
-
   for(let i=0;i<pasos.length;i++){
 
     let paso = pasos[i];
+    let actividad = paso.closest(".card").querySelector(".actividad").value;
 
     let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
 
@@ -258,41 +259,33 @@ async function enviar(){
     let base64 = await toBase64(file);
 
     data.registros.push({
-      actividad:"OK",
+      actividad,
       numero:i+1,
       etapa:paso.children[1].innerText,
       pregunta:paso.children[2].innerText,
       criterio:paso.children[3].innerText,
-      evidencia:paso.children[4].innerText,
-      nombreArchivo:`${i+1}`,
+      nombreArchivo:`${i+1}-${actividad}`,
       file:{
         tipo:file.type,
         data:base64.split(",")[1]
       }
     });
 
-    count++;
-    progress(Math.round((count/total)*80));
+    progress(Math.round((i+1)/pasos.length*80));
   }
 
-  try{
-    let res = await fetch(API_ENVIO,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify(data)
-    });
+  await fetch(API_ENVIO,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(data)
+  });
 
-    console.log("RESPUESTA ENVIO:", res);
+  progress(100);
 
-    progress(100);
-
-    alert("Enviado correctamente");
+  setTimeout(()=>{
+    alert("Gracias por contribuir con tu seguridad");
     location.reload();
-
-  }catch(e){
-    console.error("ERROR ENVIO", e);
-    alert("Error en envío");
-  }
+  },800);
 }
 
 window.onload = cargarActividades;
