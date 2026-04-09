@@ -174,9 +174,10 @@ function cargarPasos(select){
       <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
       <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
 
-      <button class="btn-ver" onclick="toggle(this)">👁 Ver evidencia</button>
+      <!-- BOTÓN MEJORADO -->
+      <button class="btn-ver" onclick="toggle(this)">👁 Ver evidencia ⬇</button>
 
-      <div class="preview"></div>
+      <div class="preview" style="display:none;"></div>
       <div class="estado">❌ Falta evidencia</div>
     `;
 
@@ -190,6 +191,7 @@ function archivo(input){
   let paso = input.parentElement;
   let preview = paso.querySelector(".preview");
   let estado = paso.querySelector(".estado");
+  let btn = paso.querySelector(".btn-ver");
 
   let file = input.files[0];
   if(!file) return;
@@ -205,14 +207,24 @@ function archivo(input){
   estado.innerHTML="✔ Completo";
   estado.style.color="green";
 
-  preview.style.display="none";
+  // 👇 MOSTRAR AUTOMÁTICAMENTE
+  preview.style.display="block";
+
+  // 👇 CAMBIO DE BOTÓN
+  btn.innerHTML="👁 Ocultar evidencia ⬆";
 }
 
 // TOGGLE
 function toggle(btn){
   let preview = btn.parentElement.querySelector(".preview");
 
-  preview.style.display = preview.style.display==="none" ? "block":"none";
+  if(preview.style.display==="none"){
+    preview.style.display="block";
+    btn.innerHTML="👁 Ocultar evidencia ⬆";
+  }else{
+    preview.style.display="none";
+    btn.innerHTML="👁 Ver evidencia ⬇";
+  }
 }
 
 // BASE64
