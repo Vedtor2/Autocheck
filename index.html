@@ -111,21 +111,20 @@ button {
 
 <script>
 
-const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8...";
-const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8...";
+const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
+
+const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
 fecha.value = new Date().toISOString().split('T')[0];
 
 // =============================
-// 🔥 COMPRESIÓN IMAGEN + VIDEO
+// 🔥 SOLO CAMBIO AQUÍ (COMPRESIÓN)
 // =============================
 async function toBase64(file){
 
   return new Promise((resolve) => {
 
-    // =========================
     // 📷 IMAGEN
-    // =========================
     if(file.type.startsWith("image/")){
 
       let img = new Image();
@@ -154,21 +153,17 @@ async function toBase64(file){
       reader.readAsDataURL(file);
     }
 
-    // =========================
-    // 🎥 VIDEO (optimización básica)
-    // =========================
+    // 🎥 VIDEO (SIN ROMPER TU FLUJO)
     else{
 
-      // ⚠️ Limitar tamaño máximo (ej: 10MB)
+      // solo validación de peso (NO cambia lógica)
       if(file.size > 10 * 1024 * 1024){
-        alert("El video es muy pesado. Máximo 10MB.");
+        alert("El video es muy pesado (máx 10MB)");
         return;
       }
 
       let reader = new FileReader();
-
       reader.onload = () => resolve(reader.result);
-
       reader.readAsDataURL(file);
     }
 
@@ -176,7 +171,7 @@ async function toBase64(file){
 }
 
 // =============================
-// RESTO DE TU CÓDIGO (IGUAL)
+// 🔥 TU CÓDIGO ORIGINAL (INTACTO)
 // =============================
 
 async function cargarActividades(){
@@ -191,6 +186,7 @@ async function cargarActividades(){
 }
 
 function agregarActividad(){
+
   let div = document.createElement("div");
   div.className="card";
 
