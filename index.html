@@ -41,6 +41,8 @@ button {
   border:none;
   border-radius:8px;
   color:white;
+  font-weight:bold;
+  cursor:pointer;
 }
 
 .btn-foto { background:#4caf50; }
@@ -48,7 +50,14 @@ button {
 .btn-preview { background:#607d8b; }
 .btn-delete { background:red; }
 
-.preview { display:none; }
+.preview {
+  display:none;
+  margin-top:5px;
+}
+
+.preview img, .preview video {
+  width:100%;
+}
 
 #mensaje {
   margin-top: 15px;
@@ -116,6 +125,7 @@ document.getElementById("fecha").valueAsDate = new Date();
 
 let pasos = {};
 
+// 🔹 CARGAR ACTIVIDADES
 async function cargarActividades(){
   const res = await fetch(API_URL);
   const data = await res.json();
@@ -134,12 +144,14 @@ async function cargarActividades(){
 
 cargarActividades();
 
+// 🔹 AGREGAR ACTIVIDAD
 selectorActividad.addEventListener("change", function(){
   if(!this.value) return;
   crearFormulario(this.value);
   this.value = "";
 });
 
+// 🔹 CREAR FORMULARIO
 function crearFormulario(actividad){
 
   let cont = document.getElementById("formularios");
@@ -159,6 +171,8 @@ function crearFormulario(actividad){
       <div><b>Evidencia:</b> ${p.f}</div>
 
       <input type="file" class="file-foto" accept="image/*" capture="environment" style="display:none" onchange="preview(this)">
+      
+      <!-- 🔥 FIX SAMSUNG -->
       <input type="file" class="file-video" accept="video/*" style="display:none" onchange="preview(this)">
 
       <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷</button>
@@ -178,6 +192,7 @@ function crearFormulario(actividad){
   cont.appendChild(document.getElementById("selectorActividad"));
 }
 
+// 🔹 PREVIEW
 function preview(input){
 
   let fila = input.parentElement;
@@ -187,15 +202,17 @@ function preview(input){
   let url = URL.createObjectURL(file);
 
   preview.innerHTML = file.type.includes("image")
-    ? `<img src="${url}" width="100%">`
-    : `<video src="${url}" controls width="100%"></video>`;
+    ? `<img src="${url}">`
+    : `<video src="${url}" controls></video>`;
 }
 
+// 🔹 TOGGLE
 function toggle(btn){
   let preview = btn.parentElement.querySelector(".preview");
   preview.style.display = preview.style.display==="block" ? "none":"block";
 }
 
+// 🔹 BASE64
 function fileToBase64(file){
   return new Promise((resolve)=>{
     let reader = new FileReader();
@@ -204,6 +221,7 @@ function fileToBase64(file){
   });
 }
 
+// 🔹 ENVIAR (MISMO FLUJO)
 async function enviar(){
 
   const bloques = document.querySelectorAll(".bloque");
@@ -229,7 +247,6 @@ async function enviar(){
 
   mensaje.innerText="Enviando...";
 
-  // 🔴 NO TOCAR FLUJO ORIGINAL
   fetch(API_ENVIO,{
     method:"POST",
     body: JSON.stringify({
