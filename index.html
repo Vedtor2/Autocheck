@@ -3,11 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Autocheck Técnico</title>
 
 <style>
 body { font-family: Arial; margin:10px; background:#f5f5f5; }
-.container { max-width:700px; margin:auto; }
+.container { max-width:900px; margin:auto; }
+
+.row {
+  display:flex;
+  gap:10px;
+}
+
+.row > div {
+  flex:1;
+}
 
 input, select, button {
   width:100%;
@@ -21,8 +31,10 @@ button {
   border-radius:8px;
   color:white;
   font-weight:bold;
+  cursor:pointer;
 }
 
+.btn-primary { background:#1976d2; }
 .btn-foto { background:#4caf50; }
 .btn-video { background:#ff5722; }
 .btn-preview { background:#607d8b; }
@@ -71,25 +83,39 @@ button {
 
 <h3>Autocheck Técnico</h3>
 
-<input type="date" id="fecha">
-<input type="text" id="cuadrilla" placeholder="Cuadrilla">
-<input type="text" id="integrantes" placeholder="Integrantes">
+<div class="row">
+  <div>
+    <label>Fecha</label>
+    <input type="date" id="fecha">
+  </div>
 
-<select id="sede">
-<option value="">Seleccione sede</option>
-<option>Chincha</option>
-<option>Pisco</option>
-<option>Ica</option>
-<option>Nasca</option>
-<option>Palpa</option>
-<option>Puquio</option>
-<option>Coracora</option>
-</select>
+  <div>
+    <label>Sede</label>
+    <select id="sede">
+      <option value="">Seleccione</option>
+      <option>Chincha</option>
+      <option>Pisco</option>
+      <option>Ica</option>
+      <option>Nasca</option>
+      <option>Palpa</option>
+      <option>Puquio</option>
+      <option>Coracora</option>
+    </select>
+  </div>
+
+  <div>
+    <label>Cuadrilla</label>
+    <input type="text" id="cuadrilla">
+  </div>
+</div>
+
+<label>Integrantes</label>
+<input type="text" id="integrantes">
 
 <div id="actividades"></div>
 
-<button onclick="agregarActividad()">Agregar Actividad</button>
-<button onclick="enviar()">Enviar</button>
+<button class="btn-primary" onclick="agregarActividad()">Agregar Actividad</button>
+<button class="btn-primary" onclick="enviar()">Enviar</button>
 
 <div id="progressContainer">
   <div id="progressBar">0%</div>
@@ -101,29 +127,23 @@ button {
 
 <script>
 
-// 🔥 TUS ENDPOINTS (NO CAMBIADOS)
-const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
-
-const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
+const API_ACTIVIDADES = "TU_ENDPOINT_ACTIVIDADES";
+const API_ENVIO = "TU_ENDPOINT_ENVIO";
 
 fecha.value = new Date().toISOString().split('T')[0];
 
-let dataActividades = [];
+let dataActividades=[];
 
 // 🔹 CARGAR ACTIVIDADES
 async function cargarActividades(){
-  try{
-    let res = await fetch(API_ACTIVIDADES,{method:"POST"});
-    let data = await res.json();
-    if(data.value) data = data.value;
+  let res = await fetch(API_ACTIVIDADES,{method:"POST"});
+  let data = await res.json();
+  if(data.value) data = data.value;
 
-    dataActividades = data;
-  }catch(e){
-    mensaje.innerText="Error cargando actividades";
-  }
+  dataActividades = data;
 }
 
-// 🔹 AGREGAR ACTIVIDAD
+// 🔹 AGREGAR
 function agregarActividad(){
 
   let div = document.createElement("div");
@@ -163,8 +183,10 @@ function cargarPasos(select){
       <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
       <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
 
-      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="preview(this)">
-      <input type="file" class="video" accept="video/*" capture="camcorder" style="display:none" onchange="preview(this)">
+      <input type="file" class="foto" accept="image/*" capture style="display:none" onchange="preview(this)">
+      
+      <!-- 🔥 FIX VIDEO SAMSUNG -->
+      <input type="file" class="video" accept="video/*" capture style="display:none" onchange="preview(this)">
 
       <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
       <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
@@ -180,7 +202,6 @@ function cargarPasos(select){
 
 // 🔹 PREVIEW
 function preview(input){
-
   let paso = input.parentElement;
   let preview = paso.querySelector(".preview");
   let estado = paso.querySelector(".estado");
@@ -228,66 +249,55 @@ async function enviar(){
   let pasos = document.querySelectorAll(".paso");
   let registros=[];
 
-  try{
+  for(let i=0;i<pasos.length;i++){
 
-    for(let i=0;i<pasos.length;i++){
+    let paso = pasos[i];
+    let actividad = paso.closest(".card").querySelector("select").value;
 
-      let paso = pasos[i];
-      let actividad = paso.closest(".card").querySelector("select").value;
+    let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
 
-      let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
-
-      if(!file){
-        mensaje.innerText="Falta evidencia";
-        return;
-      }
-
-      let base64 = await toBase64(file);
-
-      registros.push({
-        actividad,
-        numero:i+1,
-        etapa: paso.children[1].innerText.replace("Etapa: ",""),
-        pregunta: paso.children[2].innerText.replace("Pregunta: ",""),
-        criterio: paso.children[3].innerText.replace("Criterio: ",""),
-        evidencia: paso.children[4].innerText.replace("Evidencia: ",""),
-        file:{
-          name:`${i+1}-${actividad}`,
-          type:file.type,
-          data:base64
-        }
-      });
-
-      progress((i+1)/pasos.length*80);
+    if(!file){
+      mensaje.innerText="Falta evidencia";
+      return;
     }
 
-    const response = await fetch(API_ENVIO,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        fecha:fecha.value,
-        sede:sede.value,
-        cuadrilla:cuadrilla.value,
-        integrantes:integrantes.value,
-        registros
-      })
+    let base64 = await toBase64(file);
+
+    registros.push({
+      actividad,
+      numero:i+1,
+      etapa: paso.children[1].innerText.replace("Etapa: ",""),
+      pregunta: paso.children[2].innerText.replace("Pregunta: ",""),
+      criterio: paso.children[3].innerText.replace("Criterio: ",""),
+      evidencia: paso.children[4].innerText.replace("Evidencia: ",""),
+      file:{
+        name:`${i+1}-${actividad}`,
+        type:file.type,
+        data:base64
+      }
     });
 
-    if(!response.ok){
-      throw new Error("Error HTTP");
-    }
-
-    progress(100);
-
-    setTimeout(()=>{
-      mensaje.innerText="Gracias por contribuir con tu seguridad";
-      location.reload();
-    },1000);
-
-  }catch(e){
-    console.error(e);
-    mensaje.innerText="Error al enviar";
+    progress((i+1)/pasos.length*80);
   }
+
+  await fetch(API_ENVIO,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      fecha:fecha.value,
+      sede:sede.value,
+      cuadrilla:cuadrilla.value,
+      integrantes:integrantes.value,
+      registros
+    })
+  });
+
+  progress(100);
+
+  setTimeout(()=>{
+    mensaje.innerText="Gracias por contribuir con tu seguridad";
+    location.reload();
+  },1000);
 }
 
 cargarActividades();
