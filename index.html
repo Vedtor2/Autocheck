@@ -9,8 +9,14 @@
 body { font-family: Arial; margin:10px; background:#f5f5f5; }
 .container { max-width:900px; margin:auto; }
 
-.row { display:flex; gap:10px; }
-.row > div { flex:1; }
+.row {
+  display:flex;
+  gap:10px;
+}
+
+.row > div:nth-child(1){ flex:1; }
+.row > div:nth-child(2){ flex:1; }
+.row > div:nth-child(3){ flex:0.7; } /* 🔥 cuadrilla más chico */
 
 input, select, button {
   width:100%;
@@ -67,15 +73,6 @@ button {
   text-align:center;
   color:white;
 }
-
-#mensaje {
-  text-align:center;
-  margin-top:10px;
-  font-weight:bold;
-}
-.loading { color:orange; }
-.ok { color:green; }
-.error { color:red; }
 </style>
 </head>
 
@@ -93,7 +90,7 @@ button {
 
   <div>
     <label>Sede</label>
-    <select id="sede">
+    <select id="sede" onchange="this.blur()"> <!-- 🔥 auto cerrar -->
       <option value="">Seleccione</option>
       <option>Chincha</option>
       <option>Pisco</option>
@@ -129,40 +126,25 @@ button {
 
 <script>
 
-// 🔥 TUS ENDPOINTS (NO CAMBIAR)
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
-document.getElementById("fecha").valueAsDate = new Date();
+fecha.value = new Date().toISOString().split('T')[0];
 
-let dataActividades = [];
+let dataActividades=[];
 
-// 🔹 CARGAR ACTIVIDADES
 async function cargarActividades(){
-  try{
-    const res = await fetch(API_ACTIVIDADES,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({})
-    });
-
-    let data = await res.json();
-    if(data.value) data = data.value;
-
-    dataActividades = data;
-
-  }catch(e){
-    mostrarMensaje("Error cargando actividades","error");
-    console.error(e);
-  }
+  let res = await fetch(API_ACTIVIDADES,{method:"POST"});
+  let data = await res.json();
+  if(data.value) data = data.value;
+  dataActividades = data;
 }
 
-// 🔹 AGREGAR ACTIVIDAD
 function agregarActividad(){
 
   if(dataActividades.length===0){
-    mostrarMensaje("Aún no cargan las actividades","error");
+    mensaje.innerText="Aún no cargan las actividades";
     return;
   }
 
@@ -182,7 +164,6 @@ function agregarActividad(){
   actividades.appendChild(div);
 }
 
-// 🔹 CARGAR PASOS
 function cargarPasos(select){
 
   let cont = select.parentElement;
@@ -203,7 +184,7 @@ function cargarPasos(select){
       <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
       <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
 
-      <input type="file" class="foto" accept="image/*" style="display:none" onchange="preview(this)">
+      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="preview(this)">
       <input type="file" class="video" accept="video/*" style="display:none" onchange="preview(this)">
 
       <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
@@ -218,7 +199,6 @@ function cargarPasos(select){
   });
 }
 
-// 🔹 PREVIEW
 function preview(input){
   let paso = input.parentElement;
   let preview = paso.querySelector(".preview");
@@ -237,13 +217,11 @@ function preview(input){
   estado.style.color="green";
 }
 
-// 🔹 TOGGLE
 function toggle(btn){
   let preview = btn.parentElement.querySelector(".preview");
   preview.style.display = preview.style.display==="none"?"block":"none";
 }
 
-// 🔹 BASE64
 function toBase64(file){
   return new Promise(r=>{
     let reader=new FileReader();
@@ -252,60 +230,51 @@ function toBase64(file){
   });
 }
 
-// 🔹 PROGRESO
 function progress(p){
   progressContainer.style.display="block";
   progressBar.style.width=Math.round(p)+"%";
   progressBar.innerText=Math.round(p)+"%";
 }
 
-// 🔹 MENSAJE
-function mostrarMensaje(txt,tipo){
-  mensaje.innerText=txt;
-  mensaje.className=tipo;
-}
-
-// 🔹 ENVIAR
 async function enviar(){
 
-  mostrarMensaje("⏳ Enviando información...","loading");
+  mensaje.innerText="⏳ Enviando información...";
 
   let pasos = document.querySelectorAll(".paso");
   let registros=[];
 
-  try{
+  for(let i=0;i<pasos.length;i++){
 
-    for(let i=0;i<pasos.length;i++){
+    let paso = pasos[i];
+    let actividad = paso.closest(".card").querySelector("select").value;
 
-      let paso = pasos[i];
-      let actividad = paso.closest(".card").querySelector("select").value;
+    let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
 
-      let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
-
-      if(!file){
-        mostrarMensaje("Falta evidencia","error");
-        return;
-      }
-
-      let base64 = await toBase64(file);
-
-      registros.push({
-        actividad,
-        numero:i+1,
-        etapa: paso.children[1].innerText.replace("Etapa: ",""),
-        pregunta: paso.children[2].innerText.replace("Pregunta: ",""),
-        criterio: paso.children[3].innerText.replace("Criterio: ",""),
-        evidencia: paso.children[4].innerText.replace("Evidencia: ",""),
-        file:{
-          name:`${i+1}-${actividad}`,
-          type:file.type,
-          data:base64
-        }
-      });
-
-      progress((i+1)/pasos.length*80);
+    if(!file){
+      mensaje.innerText=`Falta evidencia en ${actividad} - paso ${i+1}`;
+      return;
     }
 
+    let base64 = await toBase64(file);
+
+    registros.push({
+      actividad,
+      numero:i+1,
+      etapa: paso.children[1].innerText.replace("Etapa: ",""),
+      pregunta: paso.children[2].innerText.replace("Pregunta: ",""),
+      criterio: paso.children[3].innerText.replace("Criterio: ",""),
+      evidencia: paso.children[4].innerText.replace("Evidencia: ",""),
+      file:{
+        name:`${i+1}-${actividad}`,
+        type:file.type,
+        data:base64
+      }
+    });
+
+    progress((i+1)/pasos.length*80);
+  }
+
+  try{
     const res = await fetch(API_ENVIO,{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
@@ -318,24 +287,20 @@ async function enviar(){
       })
     });
 
-    if(!res.ok){
-      throw new Error("Error HTTP");
-    }
+    if(!res.ok) throw new Error();
 
     progress(100);
 
     setTimeout(()=>{
-      mostrarMensaje("Gracias por contribuir con tu seguridad","ok");
+      mensaje.innerText="Gracias por contribuir con tu seguridad";
       location.reload();
     },1000);
 
   }catch(e){
-    console.error(e);
-    mostrarMensaje("Error al enviar","error");
+    mensaje.innerText="Error al enviar";
   }
 }
 
-// 🔥 INICIO
 cargarActividades();
 
 </script>
