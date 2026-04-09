@@ -2,45 +2,59 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Autocheck Técnico</title>
 
 <style>
-body { font-family: Arial; margin: 10px; }
-.container { max-width: 1000px; margin: auto; }
+body { font-family: Arial; margin:10px; }
+.container { max-width:700px; margin:auto; }
 
-label { font-weight: bold; display: block; margin-top: 10px; }
+.row { display:flex; gap:5px; }
+.row > * { flex:1; }
 
 input, select, button {
-  width: 100%;
-  padding: 8px;
-  margin-top: 5px;
+  width:100%;
+  padding:10px;
+  margin-top:5px;
+  font-size:14px;
 }
 
-.bloque {
-  border: 2px solid #000;
-  padding: 10px;
-  margin-top: 20px;
+button {
+  border:none;
+  border-radius:6px;
+  color:white;
+  background:#1976d2;
 }
 
-.fila {
-  border-bottom: 1px solid #ccc;
-  padding: 10px 0;
+.btn-foto { background:#4caf50; }
+.btn-video { background:#ff5722; }
+.btn-ver { background:#607d8b; }
+
+.card {
+  border:1px solid #ccc;
+  padding:10px;
+  margin-top:10px;
+  border-radius:6px;
 }
 
-.btn-delete {
-  background: red;
-  color: white;
+.paso {
+  border-top:1px dashed #aaa;
+  margin-top:10px;
+  padding-top:10px;
 }
+
+.estado { font-weight:bold; margin-top:5px; }
+
+.preview video, .preview img { width:100%; margin-top:5px; }
 
 #mensaje {
-  margin-top: 15px;
-  text-align: center;
-  font-weight: bold;
+  text-align:center;
+  margin-top:10px;
+  font-weight:bold;
 }
-
-.ok { color: green; }
-.error { color: red; }
-.loading { color: orange; }
+.ok { color:green; }
+.error { color:red; }
+.loading { color:orange; }
 </style>
 </head>
 
@@ -48,38 +62,28 @@ input, select, button {
 
 <div class="container">
 
-<h2>Autocheck Técnico</h2>
+<h3>Autocheck Técnico</h3>
 
-<label>Fecha:</label>
+<div class="row">
 <input type="date" id="fecha">
-
-<label>Cuadrilla:</label>
-<input type="text" id="cuadrilla">
-
-<label>Integrantes:</label>
-<input type="text" id="integrantes">
-
-<label>Sede:</label>
-<select id="sede">
-  <option value="">Seleccione...</option>
-  <option>Chincha</option>
-  <option>Pisco</option>
-  <option>Ica</option>
-  <option>Nasca</option>
-  <option>Palpa</option>
-  <option>Puquio</option>
-  <option>Coracora</option>
+<input type="text" id="cuadrilla" placeholder="Cuadrilla">
+<select id="sede" onchange="this.blur()">
+<option value="">Sede</option>
+<option>Chincha</option>
+<option>Pisco</option>
+<option>Ica</option>
+<option>Nasca</option>
+<option>Palpa</option>
+<option>Puquio</option>
+<option>Coracora</option>
 </select>
-
-<div id="formularios"></div>
-
-<div id="selectorContainer">
-  <label>Agregar actividad:</label>
-  <select id="selectorActividad">
-    <option value="">Seleccione actividad</option>
-  </select>
 </div>
 
+<input type="text" id="integrantes" placeholder="Integrantes">
+
+<div id="actividades"></div>
+
+<button onclick="agregarActividad()">Agregar Actividad</button>
 <button onclick="enviar()">Enviar</button>
 
 <div id="mensaje"></div>
@@ -88,16 +92,17 @@ input, select, button {
 
 <script>
 
-// 🔥 ENDPOINTS POWER AUTOMATE (LOS TUYOS)
+// 🔥 TUS ENDPOINTS
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
-document.getElementById("fecha").valueAsDate = new Date();
+fecha.value = new Date().toISOString().split('T')[0];
 
-let pasos = {};
+let dataActividades = [];
+let listaActividades = [];
 
-// 🔹 CARGAR ACTIVIDADES (Power Automate)
+// 🔹 CARGAR ACTIVIDADES
 async function cargarActividades(){
   try{
     const res = await fetch(API_ACTIVIDADES,{
@@ -109,190 +114,166 @@ async function cargarActividades(){
     let data = await res.json();
     if(data.value) data = data.value;
 
-    pasos = {};
-    let actividades = [];
+    dataActividades = data;
+    listaActividades = [...new Set(data.map(x=>x.ACTIVIDAD))];
 
-    data.forEach(x=>{
-      if(!pasos[x.ACTIVIDAD]){
-        pasos[x.ACTIVIDAD] = [];
-        actividades.push(x.ACTIVIDAD);
-      }
-      pasos[x.ACTIVIDAD].push(x);
-    });
-
-    const selector = document.getElementById("selectorActividad");
-
-    actividades.forEach(a=>{
-      let opt = document.createElement("option");
-      opt.value = a;
-      opt.textContent = a;
-      selector.appendChild(opt);
-    });
+    agregarActividad();
 
   }catch(e){
-    mostrarMensaje("Error cargando actividades ❌","error");
+    mostrarMensaje("Error cargando actividades","error");
   }
 }
 
-cargarActividades();
-
 // 🔹 AGREGAR ACTIVIDAD
-document.getElementById("selectorActividad").addEventListener("change", function(){
-  if(!this.value) return;
-  crearFormulario(this.value);
-  this.value="";
-  this.blur();
-});
+function agregarActividad(){
 
-// 🔹 CREAR FORMULARIO
-function crearFormulario(actividad){
+  let div = document.createElement("div");
+  div.className="card";
 
-  let cont = document.getElementById("formularios");
+  let opciones = `<option value="">Seleccione actividad</option>`;
+  listaActividades.forEach(a => opciones += `<option>${a}</option>`);
 
-  let bloque = document.createElement("div");
-  bloque.className = "bloque";
+  div.innerHTML = `
+    <select onchange="this.blur(); cargarPasos(this)">
+      ${opciones}
+    </select>
+  `;
 
-  let html = `<h3>${actividad}</h3>`;
+  actividades.appendChild(div);
+}
 
-  let orden = 1;
+// 🔹 CARGAR PASOS
+function cargarPasos(select){
 
-  pasos[actividad].forEach(p => {
+  let cont = select.parentElement;
+  cont.querySelectorAll(".paso").forEach(e=>e.remove());
 
-    html += `
-    <div class="fila">
+  let pasos = dataActividades.filter(x => x.ACTIVIDAD === select.value);
 
-      <div><b>${orden}. ${p["ETAPAS DE LA ACTIVIDAD"]}</b></div>
+  pasos.forEach((p,i)=>{
 
-      <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
-      <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
-      <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
+    let div = document.createElement("div");
+    div.className="paso";
 
-      <label>Foto:</label>
-      <input type="file" class="file-foto" accept="image/*" capture="environment">
+    div.innerHTML = `
+      <b>Paso ${i+1}</b>
 
-      <label>Video:</label>
-      <!-- 🔥 VIDEO FIX REAL -->
-      <input type="file" class="file-video" accept="video/*" capture="camcorder">
+      <div>${p["ETAPAS DE LA ACTIVIDAD"]}</div>
+      <div>${p["PREGUNTA"]}</div>
+      <div>${p["CRITERIO VISIBLE"]}</div>
+      <div>${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
 
-    </div>`;
+      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
+      
+      <!-- 🔥 VIDEO FIX -->
+      <input type="file" class="video" accept="video/*" capture="camcorder" style="display:none" onchange="archivo(this)">
 
-    orden++;
+      <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
+      <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
+
+      <div class="estado">❌ Falta evidencia</div>
+    `;
+
+    cont.appendChild(div);
   });
+}
 
-  html += `<button class="btn-delete" onclick="this.parentElement.remove()">Eliminar actividad</button>`;
+// 🔹 ARCHIVO
+function archivo(input){
 
-  bloque.innerHTML = html;
-  cont.appendChild(bloque);
+  let paso = input.parentElement;
+  let estado = paso.querySelector(".estado");
 
-  cont.appendChild(document.getElementById("selectorContainer"));
+  estado.innerHTML="✔ Completo";
+  estado.style.color="green";
 }
 
 // 🔹 BASE64
-function fileToBase64(file){
-  return new Promise((resolve)=>{
-    let reader = new FileReader();
+function toBase64(file){
+  return new Promise(r=>{
+    let reader=new FileReader();
+    reader.onload=()=>r(reader.result.split(",")[1]);
     reader.readAsDataURL(file);
-    reader.onload = ()=>resolve(reader.result.split(",")[1]);
   });
 }
 
 // 🔹 MENSAJE
-function mostrarMensaje(t, tipo){
+function mostrarMensaje(txt, tipo){
   let m = document.getElementById("mensaje");
   m.className = tipo;
-  m.innerText = t;
+  m.innerText = txt;
 }
 
-// 🔹 ENVIAR (Power Automate)
+// 🔹 ENVIAR
 async function enviar(){
 
-  const fecha = document.getElementById("fecha").value;
-  const sede = document.getElementById("sede").value;
-  const cuadrilla = document.getElementById("cuadrilla").value;
-  const integrantes = document.getElementById("integrantes").value;
+  const fechaVal = fecha.value;
+  const sedeVal = sede.value;
+  const cuadrillaVal = cuadrilla.value;
+  const integrantesVal = integrantes.value;
 
-  if(!fecha || !sede || !cuadrilla || !integrantes){
-    mostrarMensaje("Completa todos los datos ⚠️", "error");
+  if(!fechaVal || !sedeVal || !cuadrillaVal || !integrantesVal){
+    mostrarMensaje("Completa todos los campos","error");
     return;
   }
 
   let registros = [];
-  const bloques = document.querySelectorAll(".bloque");
+  let pasos = document.querySelectorAll(".paso");
 
-  if(bloques.length===0){
-    mostrarMensaje("Agrega una actividad ⚠️","error");
-    return;
-  }
+  for(let i=0;i<pasos.length;i++){
 
-  try{
+    let paso = pasos[i];
+    let actividad = paso.closest(".card").querySelector("select").value;
 
-    for(let bloque of bloques){
+    let foto = paso.querySelector(".foto").files[0];
+    let video = paso.querySelector(".video").files[0];
 
-      let actividad = bloque.querySelector("h3").innerText;
-      let filas = bloque.querySelectorAll(".fila");
-
-      let orden = 1;
-
-      for(let i=0;i<filas.length;i++){
-
-        let fila = filas[i];
-
-        let foto = fila.querySelector(".file-foto").files[0];
-        let video = fila.querySelector(".file-video").files[0];
-
-        if(!foto && !video){
-          mostrarMensaje("Falta evidencia 📷","error");
-          return;
-        }
-
-        let file = video || foto;
-        let base64 = await fileToBase64(file);
-        let pasoData = pasos[actividad][i];
-
-        registros.push({
-          actividad,
-          numero: orden,
-          etapa: pasoData["ETAPAS DE LA ACTIVIDAD"],
-          pregunta: pasoData["PREGUNTA"],
-          criterio: pasoData["CRITERIO VISIBLE"],
-          evidencia: pasoData["EVIDENCIA ¿Qué evidencia necesito?"],
-          file:{
-            name: `${orden}-${actividad}`,
-            type: file.type,
-            data: base64
-          }
-        });
-
-        orden++;
-      }
+    if(!foto && !video){
+      mostrarMensaje("Falta evidencia","error");
+      return;
     }
 
-    mostrarMensaje("⏳ Enviando...", "loading");
+    let file = video || foto;
+    let base64 = await toBase64(file);
 
+    registros.push({
+      actividad,
+      numero:i+1,
+      etapa: paso.children[1].innerText,
+      pregunta: paso.children[2].innerText,
+      criterio: paso.children[3].innerText,
+      evidencia: paso.children[4].innerText,
+      file:{
+        name:`${i+1}-${actividad}`,
+        type:file.type,
+        data:base64
+      }
+    });
+  }
+
+  mostrarMensaje("Enviando...","loading");
+
+  try{
     await fetch(API_ENVIO,{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({
-        fecha,
-        sede,
-        cuadrilla,
-        integrantes,
+        fecha:fechaVal,
+        sede:sedeVal,
+        cuadrilla:cuadrillaVal,
+        integrantes:integrantesVal,
         registros
       })
     });
 
-    mostrarMensaje("Gracias por contribuir con tu seguridad ✅","ok");
-
-    document.getElementById("formularios").innerHTML="";
-    document.getElementById("cuadrilla").value="";
-    document.getElementById("integrantes").value="";
-    document.getElementById("sede").value="";
+    mostrarMensaje("Gracias por contribuir con tu seguridad","ok");
 
   }catch(e){
-    console.error(e);
-    mostrarMensaje("Error conexión ❌","error");
+    mostrarMensaje("Error de envío","error");
   }
 }
+
+window.onload = cargarActividades;
 
 </script>
 
