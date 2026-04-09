@@ -19,16 +19,14 @@ input, select, button {
 }
 
 button {
-  background:#1976d2;
-  color:white;
   border:none;
-  margin-top:10px;
   border-radius:6px;
+  color:white;
 }
 
 .btn-foto { background:#4caf50; }
 .btn-video { background:#ff5722; }
-.btn-ver { background:#607d8b; display:none; }
+.btn-ver { background:#607d8b; }
 
 .card {
   border:1px solid #ccc;
@@ -43,10 +41,7 @@ button {
   padding-top:10px;
 }
 
-.estadoPaso {
-  font-weight:bold;
-  margin-top:5px;
-}
+.preview { display:none; }
 
 #progressContainer {
   width:100%;
@@ -65,11 +60,7 @@ button {
   color:white;
 }
 
-#loader {
-  display:none;
-  text-align:center;
-  margin-top:10px;
-}
+#loader { display:none; text-align:center; }
 </style>
 </head>
 
@@ -109,7 +100,7 @@ button {
   <div id="progressBar">0%</div>
 </div>
 
-<div id="loader">⏳ Enviando información...</div>
+<div id="loader">⏳ Enviando...</div>
 
 </div>
 
@@ -122,25 +113,21 @@ const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.
 
 fecha.value = new Date().toISOString().split('T')[0];
 
-// 🔥 CARGAR ACTIVIDADES
+// 🔥 ACTIVIDADES
 async function cargarActividades(){
+  try{
+    let res = await fetch(API_ACTIVIDADES,{method:"POST"});
+    let data = await res.json();
+    if(data.value) data = data.value;
 
-  const res = await fetch(API_ACTIVIDADES,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({})
-  });
+    window.dataActividades = data;
+    window.listaActividades = [...new Set(data.map(x=>x.ACTIVIDAD))];
 
-  let text = await res.text();
-  let data = JSON.parse(text);
-
-  if(data.value) data = data.value;
-
-  window.dataActividades = data;
-  window.listaActividades = [...new Set(data.map(r => r["ACTIVIDAD"]))];
-
-  btnAgregar.disabled = false;
-  agregarActividad();
+    btnAgregar.disabled = false;
+    agregarActividad();
+  }catch(e){
+    alert("Error cargando actividades");
+  }
 }
 
 // 🔥 AGREGAR ACTIVIDAD
@@ -150,13 +137,11 @@ function agregarActividad(){
   div.className="card";
 
   let opciones = `<option value="">Seleccione actividad</option>`;
-  listaActividades.forEach(a=>{
-    opciones += `<option>${a}</option>`;
-  });
+  listaActividades.forEach(a=> opciones+=`<option>${a}</option>`);
 
   div.innerHTML = `
     <label>Actividad</label>
-    <select class="actividad" onchange="this.blur(); cargarPasos(this)">
+    <select onchange="this.blur();cargarPasos(this)">
       ${opciones}
     </select>
   `;
@@ -164,176 +149,158 @@ function agregarActividad(){
   actividades.appendChild(div);
 }
 
-// 🔥 CARGAR PASOS
+// 🔥 PASOS
 function cargarPasos(select){
 
-  let actividad = select.value;
-  let contenedor = select.parentElement;
+  let cont = select.parentElement;
+  cont.querySelectorAll(".paso").forEach(e=>e.remove());
 
-  contenedor.querySelectorAll(".paso").forEach(e => e.remove());
+  let pasos = dataActividades.filter(x=>x.ACTIVIDAD==select.value);
 
-  let pasos = dataActividades.filter(r => r["ACTIVIDAD"] === actividad);
-
-  pasos.forEach((p, i)=>{
+  pasos.forEach((p,i)=>{
 
     let div = document.createElement("div");
-    div.className = "paso";
+    div.className="paso";
 
     div.innerHTML = `
       <label>Paso ${i+1}</label>
       <div>${p["ETAPAS DE LA ACTIVIDAD"]}</div>
 
-      <label>Pregunta</label>
-      <div>${p["PREGUNTA"]}</div>
-
-      <label>Criterio Visible</label>
-      <div>${p["CRITERIO VISIBLE"]}</div>
-
-      <label>Evidencia requerida</label>
-      <div>${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
-
-      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivoCargado(this)">
-      <input type="file" class="video" accept="video/*" capture="camcorder" style="display:none" onchange="archivoCargado(this)">
+      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
+      <input type="file" class="video" accept="video/*" style="display:none" onchange="archivo(this)">
 
       <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
       <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
 
-      <button class="btn-ver" onclick="verArchivo(this)">👁 Ver evidencia</button>
+      <button class="btn-ver" onclick="togglePreview(this)">👁 Ver evidencia</button>
 
-      <div class="estadoPaso">❌ Falta evidencia</div>
+      <div class="preview"></div>
     `;
 
-    contenedor.appendChild(div);
+    cont.appendChild(div);
   });
 }
 
-// 🔥 ARCHIVO CARGADO
-function archivoCargado(input){
+// 🔥 ARCHIVO
+function archivo(input){
 
   let paso = input.parentElement;
+  let preview = paso.querySelector(".preview");
+  preview.innerHTML="";
 
-  paso.querySelector(".btn-ver").style.display = "block";
-
-  validarPaso(paso);
-}
-
-// 🔥 VER ARCHIVO
-function verArchivo(btn){
-
-  let paso = btn.parentElement;
-
-  let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
-
+  let file = input.files[0];
   if(!file) return;
 
   let url = URL.createObjectURL(file);
-  window.open(url);
+
+  if(file.type.includes("image")){
+    preview.innerHTML = `<img src="${url}" style="width:100%">`;
+  }else{
+    preview.innerHTML = `<video src="${url}" controls style="width:100%"></video>`;
+  }
+
+  preview.style.display="none";
 }
 
-// 🔥 VALIDAR PASO
-function validarPaso(paso){
+// 🔥 TOGGLE PREVIEW
+function togglePreview(btn){
 
-  let foto = paso.querySelector(".foto").files.length;
-  let video = paso.querySelector(".video").files.length;
+  let preview = btn.parentElement.querySelector(".preview");
 
-  let estado = paso.querySelector(".estadoPaso");
-
-  if(foto || video){
-    estado.innerHTML = "✔ Completo";
-    estado.style.color = "green";
+  if(preview.style.display=="none"){
+    preview.style.display="block";
+    btn.innerText="🔽 Ocultar evidencia";
+  }else{
+    preview.style.display="none";
+    btn.innerText="👁 Ver evidencia";
   }
 }
 
 // 🔥 BASE64
 function toBase64(file){
-  return new Promise(resolve=>{
-    let reader = new FileReader();
+  return new Promise(r=>{
+    let reader=new FileReader();
+    reader.onload=()=>r(reader.result);
     reader.readAsDataURL(file);
-    reader.onload = ()=> resolve(reader.result);
   });
 }
 
 // 🔥 PROGRESO
-function updateProgress(p){
-  progressBar.style.width = p + "%";
-  progressBar.innerText = p + "%";
+function progress(p){
+  progressBar.style.width=p+"%";
+  progressBar.innerText=p+"%";
 }
 
-// 🔥 ENVIAR (PROGRESO REAL)
+// 🔥 ENVIAR
 async function enviar(){
 
-  btnEnviar.disabled = true;
-  progressContainer.style.display = "block";
-  loader.style.display = "block";
+  btnEnviar.disabled=true;
+  loader.style.display="block";
+  progressContainer.style.display="block";
 
-  let data = {
-    fecha: fecha.value,
-    cuadrilla: cuadrilla.value,
-    integrantes: integrantes.value,
-    sede: sede.value,
+  let data={
+    fecha:fecha.value,
+    cuadrilla:cuadrilla.value,
+    integrantes:integrantes.value,
+    sede:sede.value,
     registros:[]
   };
 
-  let archivos = document.querySelectorAll(".foto, .video");
-  let total = 0;
-  archivos.forEach(f=> total += f.files.length);
+  let archivos=document.querySelectorAll(".foto,.video");
+  let total=0;
+  archivos.forEach(f=> total+=f.files.length);
 
-  let procesados = 0;
+  let count=0;
 
-  for(let card of document.querySelectorAll(".card")){
+  for(let paso of document.querySelectorAll(".paso")){
 
-    let actividad = card.querySelector(".actividad").value;
-    let pasos = card.querySelectorAll(".paso");
+    let files=[
+      ...paso.querySelector(".foto").files,
+      ...paso.querySelector(".video").files
+    ];
 
-    for(let i=0;i<pasos.length;i++){
+    let etapa=paso.children[1].innerText;
 
-      let paso = pasos[i];
+    for(let file of files){
 
-      let files = [
-        ...paso.querySelector(".foto").files,
-        ...paso.querySelector(".video").files
-      ];
+      let base64=await toBase64(file);
 
-      let etapa = paso.children[1].innerText;
+      data.registros.push({
+        etapa,
+        file:{ tipo:file.type, data:base64.split(",")[1] }
+      });
 
-      for(let j=0;j<files.length;j++){
-
-        let file = files[j];
-
-        let base64 = await toBase64(file);
-
-        data.registros.push({
-          actividad,
-          numero:i+1,
-          etapa,
-          nombreArchivo:`${i+1}-${etapa}`,
-          file:{
-            tipo:file.type,
-            data:base64.split(",")[1]
-          }
-        });
-
-        procesados++;
-        updateProgress(Math.round((procesados/total)*70)); // 70% preparación
-      }
+      count++;
+      progress(Math.round((count/total)*70));
     }
   }
 
-  await fetch(API_ENVIO,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(data)
-  });
+  try{
+    let res=await fetch(API_ENVIO,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify(data)
+    });
 
-  updateProgress(100);
+    if(!res.ok){
+      throw new Error("Error en flujo");
+    }
 
-  setTimeout(()=>{
-    alert("Gracias por contribuir con tu seguridad");
-    location.reload();
-  },1000);
+    progress(100);
+
+    setTimeout(()=>{
+      alert("Enviado correctamente");
+      location.reload();
+    },1000);
+
+  }catch(e){
+    alert("ERROR: no llegó a Power Automate");
+    console.error(e);
+    btnEnviar.disabled=false;
+  }
 }
 
-window.onload = cargarActividades;
+window.onload=cargarActividades;
 
 </script>
 
