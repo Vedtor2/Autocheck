@@ -7,10 +7,9 @@
 
 <style>
 body { font-family: Arial; margin:10px; }
-.container { max-width:700px; margin:auto; }
+.container { max-width:900px; margin:auto; }
 
-.row { display:flex; gap:5px; }
-.row > * { flex:1; }
+label { font-weight:bold; display:block; margin-top:10px; }
 
 input, select, button {
   width:100%;
@@ -28,30 +27,43 @@ button {
 
 .btn-foto { background:#4caf50; }
 .btn-video { background:#ff5722; }
-.btn-ver { background:#607d8b; }
 
 .card {
-  border:1px solid #ccc;
+  border:2px solid #000;
   padding:10px;
-  margin-top:10px;
-  border-radius:6px;
+  margin-top:20px;
 }
 
 .paso {
-  border-top:1px dashed #aaa;
-  margin-top:10px;
-  padding-top:10px;
+  border-bottom:1px solid #ccc;
+  padding:10px 0;
 }
 
-.estado { font-weight:bold; margin-top:5px; }
+.estado {
+  font-weight:bold;
+}
 
-.preview video, .preview img { width:100%; margin-top:5px; }
+#progressContainer {
+  width:100%;
+  background:#ddd;
+  margin-top:10px;
+  display:none;
+}
+
+#progressBar {
+  width:0%;
+  height:20px;
+  background:#4caf50;
+  text-align:center;
+  color:white;
+}
 
 #mensaje {
   text-align:center;
   margin-top:10px;
   font-weight:bold;
 }
+
 .ok { color:green; }
 .error { color:red; }
 .loading { color:orange; }
@@ -62,13 +74,20 @@ button {
 
 <div class="container">
 
-<h3>Autocheck Técnico</h3>
+<h2>Autocheck Técnico</h2>
 
-<div class="row">
+<label>Fecha</label>
 <input type="date" id="fecha">
-<input type="text" id="cuadrilla" placeholder="Cuadrilla">
-<select id="sede" onchange="this.blur()">
-<option value="">Sede</option>
+
+<label>Cuadrilla</label>
+<input type="text" id="cuadrilla">
+
+<label>Integrantes</label>
+<input type="text" id="integrantes">
+
+<label>Sede</label>
+<select id="sede">
+<option value="">Seleccione...</option>
 <option>Chincha</option>
 <option>Pisco</option>
 <option>Ica</option>
@@ -77,14 +96,19 @@ button {
 <option>Puquio</option>
 <option>Coracora</option>
 </select>
-</div>
 
-<input type="text" id="integrantes" placeholder="Integrantes">
+<div id="formularios"></div>
 
-<div id="actividades"></div>
+<label>Agregar actividad</label>
+<select id="selectorActividad">
+<option value="">Seleccione actividad</option>
+</select>
 
-<button onclick="agregarActividad()">Agregar Actividad</button>
 <button onclick="enviar()">Enviar</button>
+
+<div id="progressContainer">
+  <div id="progressBar">0%</div>
+</div>
 
 <div id="mensaje"></div>
 
@@ -92,100 +116,87 @@ button {
 
 <script>
 
-// 🔥 TUS ENDPOINTS
+// 🔥 ENDPOINTS POWER AUTOMATE
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
-fecha.value = new Date().toISOString().split('T')[0];
+document.getElementById("fecha").valueAsDate = new Date();
 
 let dataActividades = [];
-let listaActividades = [];
 
 // 🔹 CARGAR ACTIVIDADES
 async function cargarActividades(){
-  try{
-    const res = await fetch(API_ACTIVIDADES,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({})
-    });
+  const res = await fetch(API_ACTIVIDADES,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({})
+  });
 
-    let data = await res.json();
-    if(data.value) data = data.value;
+  let data = await res.json();
+  if(data.value) data = data.value;
 
-    dataActividades = data;
-    listaActividades = [...new Set(data.map(x=>x.ACTIVIDAD))];
+  dataActividades = data;
 
-    agregarActividad();
+  const selector = document.getElementById("selectorActividad");
 
-  }catch(e){
-    mostrarMensaje("Error cargando actividades","error");
-  }
-}
-
-// 🔹 AGREGAR ACTIVIDAD
-function agregarActividad(){
-
-  let div = document.createElement("div");
-  div.className="card";
-
-  let opciones = `<option value="">Seleccione actividad</option>`;
-  listaActividades.forEach(a => opciones += `<option>${a}</option>`);
-
-  div.innerHTML = `
-    <select onchange="this.blur(); cargarPasos(this)">
-      ${opciones}
-    </select>
-  `;
-
-  actividades.appendChild(div);
-}
-
-// 🔹 CARGAR PASOS
-function cargarPasos(select){
-
-  let cont = select.parentElement;
-  cont.querySelectorAll(".paso").forEach(e=>e.remove());
-
-  let pasos = dataActividades.filter(x => x.ACTIVIDAD === select.value);
-
-  pasos.forEach((p,i)=>{
-
-    let div = document.createElement("div");
-    div.className="paso";
-
-    div.innerHTML = `
-      <b>Paso ${i+1}</b>
-
-      <div>${p["ETAPAS DE LA ACTIVIDAD"]}</div>
-      <div>${p["PREGUNTA"]}</div>
-      <div>${p["CRITERIO VISIBLE"]}</div>
-      <div>${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
-
-      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
-      
-      <!-- 🔥 VIDEO FIX -->
-      <input type="file" class="video" accept="video/*" capture="camcorder" style="display:none" onchange="archivo(this)">
-
-      <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
-      <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
-
-      <div class="estado">❌ Falta evidencia</div>
-    `;
-
-    cont.appendChild(div);
+  [...new Set(data.map(x=>x.ACTIVIDAD))].forEach(a=>{
+    let opt = document.createElement("option");
+    opt.value = a;
+    opt.textContent = a;
+    selector.appendChild(opt);
   });
 }
 
-// 🔹 ARCHIVO
-function archivo(input){
+cargarActividades();
 
-  let paso = input.parentElement;
-  let estado = paso.querySelector(".estado");
+// 🔹 AGREGAR ACTIVIDAD
+selectorActividad.addEventListener("change",function(){
+  if(!this.value) return;
+  crearFormulario(this.value);
+  this.value="";
+  this.blur();
+});
 
-  estado.innerHTML="✔ Completo";
-  estado.style.color="green";
+// 🔹 CREAR FORMULARIO
+function crearFormulario(actividad){
+
+  let cont = document.getElementById("formularios");
+
+  let bloque = document.createElement("div");
+  bloque.className="card";
+
+  let html = `<h3>${actividad}</h3>`;
+
+  let pasos = dataActividades.filter(x=>x.ACTIVIDAD===actividad);
+
+  pasos.forEach((p,i)=>{
+
+    html+=`
+    <div class="paso">
+
+      <div><b>${i+1}. ${p["ETAPAS DE LA ACTIVIDAD"]}</b></div>
+
+      <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
+      <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
+      <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
+
+      <label>Foto</label>
+      <input type="file" class="foto" accept="image/*" capture="environment">
+
+      <label>Video</label>
+      <!-- 🔥 VIDEO REAL -->
+      <input type="file" class="video" accept="video/*" capture="camcorder">
+
+      <div class="estado">❌ Falta evidencia</div>
+
+    </div>`;
+  });
+
+  html+=`<button onclick="this.parentElement.remove()">Eliminar</button>`;
+
+  bloque.innerHTML = html;
+  cont.appendChild(bloque);
 }
 
 // 🔹 BASE64
@@ -197,39 +208,40 @@ function toBase64(file){
   });
 }
 
-// 🔹 MENSAJE
-function mostrarMensaje(txt, tipo){
-  let m = document.getElementById("mensaje");
-  m.className = tipo;
-  m.innerText = txt;
+// 🔹 PROGRESO
+function progress(p){
+  progressContainer.style.display="block";
+  progressBar.style.width=p+"%";
+  progressBar.innerText=p+"%";
+}
+
+// 🔹 LIMPIAR TEXTO
+function limpiar(t){
+  return t.replace("Pregunta: ","")
+          .replace("Criterio: ","")
+          .replace("Evidencia: ","");
 }
 
 // 🔹 ENVIAR
 async function enviar(){
 
-  const fechaVal = fecha.value;
-  const sedeVal = sede.value;
-  const cuadrillaVal = cuadrilla.value;
-  const integrantesVal = integrantes.value;
+  mensaje.innerText="⏳ Enviando información...";
+  mensaje.className="loading";
 
-  if(!fechaVal || !sedeVal || !cuadrillaVal || !integrantesVal){
-    mostrarMensaje("Completa todos los campos","error");
-    return;
-  }
-
-  let registros = [];
+  let registros=[];
   let pasos = document.querySelectorAll(".paso");
 
   for(let i=0;i<pasos.length;i++){
 
     let paso = pasos[i];
-    let actividad = paso.closest(".card").querySelector("select").value;
+    let actividad = paso.closest(".card").querySelector("h3").innerText;
 
     let foto = paso.querySelector(".foto").files[0];
     let video = paso.querySelector(".video").files[0];
 
     if(!foto && !video){
-      mostrarMensaje("Falta evidencia","error");
+      mensaje.innerText="Falta evidencia";
+      mensaje.className="error";
       return;
     }
 
@@ -239,41 +251,40 @@ async function enviar(){
     registros.push({
       actividad,
       numero:i+1,
-      etapa: paso.children[1].innerText,
-      pregunta: paso.children[2].innerText,
-      criterio: paso.children[3].innerText,
-      evidencia: paso.children[4].innerText,
+      etapa: paso.children[0].innerText,
+      pregunta: limpiar(paso.children[1].innerText),
+      criterio: limpiar(paso.children[2].innerText),
+      evidencia: limpiar(paso.children[3].innerText),
       file:{
         name:`${i+1}-${actividad}`,
         type:file.type,
         data:base64
       }
     });
+
+    progress(Math.round((i+1)/pasos.length*80));
   }
 
-  mostrarMensaje("Enviando...","loading");
+  await fetch(API_ENVIO,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      fecha:fecha.value,
+      sede:sede.value,
+      cuadrilla:cuadrilla.value,
+      integrantes:integrantes.value,
+      registros
+    })
+  });
 
-  try{
-    await fetch(API_ENVIO,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        fecha:fechaVal,
-        sede:sedeVal,
-        cuadrilla:cuadrillaVal,
-        integrantes:integrantesVal,
-        registros
-      })
-    });
+  progress(100);
 
-    mostrarMensaje("Gracias por contribuir con tu seguridad","ok");
-
-  }catch(e){
-    mostrarMensaje("Error de envío","error");
-  }
+  setTimeout(()=>{
+    mensaje.innerText="Gracias por contribuir con tu seguridad";
+    mensaje.className="ok";
+    location.reload();
+  },1000);
 }
-
-window.onload = cargarActividades;
 
 </script>
 
