@@ -10,7 +10,7 @@ body { font-family: Arial; margin:10px; }
 .container { max-width:600px; margin:auto; }
 
 .row { display:flex; gap:5px; }
-.row input { flex:1; }
+.row > * { flex:1; }
 
 input, select, button {
   width:100%;
@@ -43,10 +43,7 @@ button {
   padding-top:10px;
 }
 
-.estado {
-  font-weight:bold;
-  margin-top:5px;
-}
+.estado { font-weight:bold; margin-top:5px; }
 
 .preview { display:none; }
 
@@ -66,6 +63,13 @@ button {
   text-align:center;
   color:white;
 }
+
+#loader {
+  display:none;
+  text-align:center;
+  margin-top:10px;
+  font-weight:bold;
+}
 </style>
 </head>
 
@@ -78,11 +82,8 @@ button {
 <div class="row">
 <input type="date" id="fecha">
 <input type="text" id="cuadrilla" placeholder="Cuadrilla">
-<input type="text" id="integrantes" placeholder="Integrantes">
-</div>
-
 <select id="sede" onchange="this.blur()">
-<option value="">Seleccione sede</option>
+<option value="">Sede</option>
 <option>Chincha</option>
 <option>Pisco</option>
 <option>Ica</option>
@@ -91,21 +92,25 @@ button {
 <option>Puquio</option>
 <option>Coracora</option>
 </select>
+</div>
+
+<input type="text" id="integrantes" placeholder="Integrantes">
 
 <div id="actividades"></div>
 
 <button onclick="agregarActividad()">Agregar Actividad</button>
-<button onclick="enviar()">Enviar</button>
+<button id="btnEnviar" onclick="enviar()">Enviar</button>
 
 <div id="progressContainer">
   <div id="progressBar">0%</div>
 </div>
 
+<div id="loader">⏳ Enviando información...</div>
+
 </div>
 
 <script>
 
-// ENDPOINTS (NO CAMBIAR)
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
@@ -126,7 +131,6 @@ async function cargarActividades(){
 
 // 🔥 AGREGAR ACTIVIDAD
 function agregarActividad(){
-
   let div = document.createElement("div");
   div.className="card";
 
@@ -134,7 +138,7 @@ function agregarActividad(){
   listaActividades.forEach(a => opciones += `<option>${a}</option>`);
 
   div.innerHTML = `
-    <select class="actividad" onchange="cargarPasos(this)">
+    <select class="actividad" onchange="this.blur(); cargarPasos(this)">
       ${opciones}
     </select>
   `;
@@ -142,7 +146,7 @@ function agregarActividad(){
   actividades.appendChild(div);
 }
 
-// 🔥 PASOS CORREGIDOS
+// 🔥 CARGAR PASOS
 function cargarPasos(select){
 
   let cont = select.parentElement;
@@ -161,6 +165,7 @@ function cargarPasos(select){
       <div><b>Etapa:</b> ${p["ETAPAS DE LA ACTIVIDAD"]}</div>
       <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
       <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
+      <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
 
       <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
       <input type="file" class="video" accept="video/*" style="display:none" onchange="archivo(this)">
@@ -178,7 +183,7 @@ function cargarPasos(select){
   });
 }
 
-// 🔥 PREVIEW + VALIDACIÓN
+// 🔥 PREVIEW
 function archivo(input){
 
   let paso = input.parentElement;
@@ -196,8 +201,8 @@ function archivo(input){
     preview.innerHTML = `<video src="${url}" controls style="width:100%"></video>`;
   }
 
-  estado.innerHTML = "✔ Completo";
-  estado.style.color = "green";
+  estado.innerHTML="✔ Completo";
+  estado.style.color="green";
 
   preview.style.display="none";
 }
@@ -231,8 +236,10 @@ function progress(p){
   progressBar.innerText=p+"%";
 }
 
-// 🔥 ENVIAR CORREGIDO
+// 🔥 ENVIAR
 async function enviar(){
+
+  loader.style.display="block";
 
   let data = {
     fecha:fecha.value,
@@ -264,6 +271,7 @@ async function enviar(){
       etapa:paso.children[1].innerText,
       pregunta:paso.children[2].innerText,
       criterio:paso.children[3].innerText,
+      evidencia:paso.children[4].innerText,
       nombreArchivo:`${i+1}-${actividad}`,
       file:{
         tipo:file.type,
