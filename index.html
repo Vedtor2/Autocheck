@@ -111,13 +111,74 @@ button {
 
 <script>
 
-const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
-
-const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
+const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8...";
+const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8...";
 
 fecha.value = new Date().toISOString().split('T')[0];
 
-// CARGAR ACTIVIDADES
+// =============================
+// 🔥 COMPRESIÓN IMAGEN + VIDEO
+// =============================
+async function toBase64(file){
+
+  return new Promise((resolve) => {
+
+    // =========================
+    // 📷 IMAGEN
+    // =========================
+    if(file.type.startsWith("image/")){
+
+      let img = new Image();
+      let reader = new FileReader();
+
+      reader.onload = e => img.src = e.target.result;
+
+      img.onload = () => {
+
+        let canvas = document.createElement("canvas");
+        let ctx = canvas.getContext("2d");
+
+        let maxWidth = 1024;
+        let scale = Math.min(1, maxWidth / img.width);
+
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        let compressed = canvas.toDataURL("image/jpeg", 0.6);
+
+        resolve(compressed);
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    // =========================
+    // 🎥 VIDEO (optimización básica)
+    // =========================
+    else{
+
+      // ⚠️ Limitar tamaño máximo (ej: 10MB)
+      if(file.size > 10 * 1024 * 1024){
+        alert("El video es muy pesado. Máximo 10MB.");
+        return;
+      }
+
+      let reader = new FileReader();
+
+      reader.onload = () => resolve(reader.result);
+
+      reader.readAsDataURL(file);
+    }
+
+  });
+}
+
+// =============================
+// RESTO DE TU CÓDIGO (IGUAL)
+// =============================
+
 async function cargarActividades(){
   let res = await fetch(API_ACTIVIDADES,{method:"POST"});
   let data = await res.json();
@@ -129,9 +190,7 @@ async function cargarActividades(){
   agregarActividad();
 }
 
-// AGREGAR ACTIVIDAD
 function agregarActividad(){
-
   let div = document.createElement("div");
   div.className="card";
 
@@ -147,7 +206,6 @@ function agregarActividad(){
   actividades.appendChild(div);
 }
 
-// PASOS
 function cargarPasos(select){
 
   let cont = select.parentElement;
@@ -174,7 +232,6 @@ function cargarPasos(select){
       <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
       <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
 
-      <!-- BOTÓN MEJORADO -->
       <button class="btn-ver" onclick="toggle(this)">👁 Ver evidencia ⬇</button>
 
       <div class="preview" style="display:none;"></div>
@@ -185,7 +242,6 @@ function cargarPasos(select){
   });
 }
 
-// PREVIEW
 function archivo(input){
 
   let paso = input.parentElement;
@@ -207,14 +263,10 @@ function archivo(input){
   estado.innerHTML="✔ Completo";
   estado.style.color="green";
 
-  // 👇 MOSTRAR AUTOMÁTICAMENTE
   preview.style.display="block";
-
-  // 👇 CAMBIO DE BOTÓN
   btn.innerHTML="👁 Ocultar evidencia ⬆";
 }
 
-// TOGGLE
 function toggle(btn){
   let preview = btn.parentElement.querySelector(".preview");
 
@@ -227,23 +279,12 @@ function toggle(btn){
   }
 }
 
-// BASE64
-function toBase64(file){
-  return new Promise(r=>{
-    let reader=new FileReader();
-    reader.onload=()=>r(reader.result);
-    reader.readAsDataURL(file);
-  });
-}
-
-// PROGRESO
 function progress(p){
   progressContainer.style.display="block";
   progressBar.style.width=p+"%";
   progressBar.innerText=p+"%";
 }
 
-// ENVIAR
 async function enviar(){
 
   loader.style.display="block";
