@@ -5,70 +5,42 @@
 <title>Autocheck Técnico</title>
 
 <style>
-body { font-family: Arial; margin:10px; }
-.container { max-width:600px; margin:auto; }
+body { font-family: Arial; margin: 10px; }
+.container { max-width: 1000px; margin: auto; }
 
-.row { display:flex; gap:5px; }
-.row > * { flex:1; }
+label { font-weight: bold; display: block; margin-top: 10px; }
 
 input, select, button {
-  width:100%;
-  padding:8px;
-  margin-top:5px;
-  font-size:14px;
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
 }
 
-button {
-  border:none;
-  border-radius:6px;
-  color:white;
-  background:#1976d2;
+.bloque {
+  border: 2px solid #000;
+  padding: 10px;
+  margin-top: 20px;
 }
 
-.btn-foto { background:#4caf50; }
-.btn-video { background:#ff5722; }
-.btn-ver { background:#607d8b; }
-
-.card {
-  border:1px solid #ccc;
-  padding:10px;
-  margin-top:10px;
-  border-radius:6px;
+.fila {
+  border-bottom: 1px solid #ccc;
+  padding: 10px 0;
 }
 
-.paso {
-  border-top:1px dashed #aaa;
-  margin-top:10px;
-  padding-top:10px;
+.btn-delete {
+  background: red;
+  color: white;
 }
 
-.estado { font-weight:bold; margin-top:5px; }
-
-.preview video, .preview img { width:100%; margin-top:5px; }
-
-#progressContainer {
-  width:100%;
-  background:#ddd;
-  border-radius:10px;
-  margin-top:10px;
-  display:none;
+#mensaje {
+  margin-top: 15px;
+  text-align: center;
+  font-weight: bold;
 }
 
-#progressBar {
-  width:0%;
-  height:20px;
-  background:#4caf50;
-  border-radius:10px;
-  text-align:center;
-  color:white;
-}
-
-#loader {
-  display:none;
-  text-align:center;
-  margin-top:10px;
-  font-weight:bold;
-}
+.ok { color: green; }
+.error { color: red; }
+.loading { color: orange; }
 </style>
 </head>
 
@@ -76,223 +48,251 @@ button {
 
 <div class="container">
 
-<h3>Autocheck Técnico</h3>
+<h2>Autocheck Técnico</h2>
 
-<div class="row">
+<label>Fecha:</label>
 <input type="date" id="fecha">
-<input type="text" id="cuadrilla" placeholder="Cuadrilla">
-<select id="sede" onchange="this.blur()">
-<option value="">Sede</option>
-<option>Chincha</option>
-<option>Pisco</option>
-<option>Ica</option>
-<option>Nasca</option>
-<option>Palpa</option>
-<option>Puquio</option>
-<option>Coracora</option>
+
+<label>Cuadrilla:</label>
+<input type="text" id="cuadrilla">
+
+<label>Integrantes:</label>
+<input type="text" id="integrantes">
+
+<label>Sede:</label>
+<select id="sede">
+  <option value="">Seleccione...</option>
+  <option>Chincha</option>
+  <option>Pisco</option>
+  <option>Ica</option>
+  <option>Nasca</option>
+  <option>Palpa</option>
+  <option>Puquio</option>
+  <option>Coracora</option>
 </select>
+
+<div id="formularios"></div>
+
+<div id="selectorContainer">
+  <label>Agregar actividad:</label>
+  <select id="selectorActividad">
+    <option value="">Seleccione actividad</option>
+  </select>
 </div>
 
-<input type="text" id="integrantes" placeholder="Integrantes">
-
-<div id="actividades"></div>
-
-<button onclick="agregarActividad()">Agregar Actividad</button>
 <button onclick="enviar()">Enviar</button>
 
-<div id="progressContainer">
-  <div id="progressBar">0%</div>
-</div>
-
-<div id="loader">⏳ Enviando información...</div>
+<div id="mensaje"></div>
 
 </div>
 
 <script>
 
-// 🔥 TUS ENDPOINTS (SIN CAMBIOS)
+// 🔥 ENDPOINTS POWER AUTOMATE (LOS TUYOS)
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
-fecha.value = new Date().toISOString().split('T')[0];
+document.getElementById("fecha").valueAsDate = new Date();
 
-// 🔹 ACTIVIDADES
+let pasos = {};
+
+// 🔹 CARGAR ACTIVIDADES (Power Automate)
 async function cargarActividades(){
-  let res = await fetch(API_ACTIVIDADES,{method:"POST"});
-  let data = await res.json();
-  if(data.value) data = data.value;
+  try{
+    const res = await fetch(API_ACTIVIDADES,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({})
+    });
 
-  window.dataActividades = data;
-  window.listaActividades = [...new Set(data.map(x=>x.ACTIVIDAD))];
+    let data = await res.json();
+    if(data.value) data = data.value;
 
-  agregarActividad();
+    pasos = {};
+    let actividades = [];
+
+    data.forEach(x=>{
+      if(!pasos[x.ACTIVIDAD]){
+        pasos[x.ACTIVIDAD] = [];
+        actividades.push(x.ACTIVIDAD);
+      }
+      pasos[x.ACTIVIDAD].push(x);
+    });
+
+    const selector = document.getElementById("selectorActividad");
+
+    actividades.forEach(a=>{
+      let opt = document.createElement("option");
+      opt.value = a;
+      opt.textContent = a;
+      selector.appendChild(opt);
+    });
+
+  }catch(e){
+    mostrarMensaje("Error cargando actividades ❌","error");
+  }
 }
 
-// 🔹 AGREGAR
-function agregarActividad(){
+cargarActividades();
 
-  let div = document.createElement("div");
-  div.className="card";
+// 🔹 AGREGAR ACTIVIDAD
+document.getElementById("selectorActividad").addEventListener("change", function(){
+  if(!this.value) return;
+  crearFormulario(this.value);
+  this.value="";
+  this.blur();
+});
 
-  let opciones = `<option value="">Seleccione actividad</option>`;
-  listaActividades.forEach(a => opciones += `<option>${a}</option>`);
+// 🔹 CREAR FORMULARIO
+function crearFormulario(actividad){
 
-  div.innerHTML = `
-    <select class="actividad" onchange="this.blur(); cargarPasos(this)">
-      ${opciones}
-    </select>
-  `;
+  let cont = document.getElementById("formularios");
 
-  actividades.appendChild(div);
-}
+  let bloque = document.createElement("div");
+  bloque.className = "bloque";
 
-// 🔹 PASOS
-function cargarPasos(select){
+  let html = `<h3>${actividad}</h3>`;
 
-  let cont = select.parentElement;
-  cont.querySelectorAll(".paso").forEach(e=>e.remove());
+  let orden = 1;
 
-  let pasos = dataActividades.filter(x => x.ACTIVIDAD === select.value);
+  pasos[actividad].forEach(p => {
 
-  pasos.forEach((p,i)=>{
+    html += `
+    <div class="fila">
 
-    let div = document.createElement("div");
-    div.className="paso";
+      <div><b>${orden}. ${p["ETAPAS DE LA ACTIVIDAD"]}</b></div>
 
-    div.innerHTML = `
-      <b>Paso ${i+1}</b>
-
-      <div><b>Etapa:</b> ${p["ETAPAS DE LA ACTIVIDAD"]}</div>
       <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
       <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
       <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
 
-      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
-      
-      <!-- 🔥 VIDEO CORREGIDO -->
-      <input type="file" class="video" accept="video/*" capture="camcorder" style="display:none" onchange="archivo(this)">
+      <label>Foto:</label>
+      <input type="file" class="file-foto" accept="image/*" capture="environment">
 
-      <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
-      <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
+      <label>Video:</label>
+      <!-- 🔥 VIDEO FIX REAL -->
+      <input type="file" class="file-video" accept="video/*" capture="camcorder">
 
-      <button class="btn-ver" onclick="toggle(this)">👁 Ver evidencia</button>
+    </div>`;
 
-      <div class="preview"></div>
-      <div class="estado">❌ Falta evidencia</div>
-    `;
-
-    cont.appendChild(div);
+    orden++;
   });
-}
 
-// 🔹 PREVIEW
-function archivo(input){
+  html += `<button class="btn-delete" onclick="this.parentElement.remove()">Eliminar actividad</button>`;
 
-  let paso = input.parentElement;
-  let preview = paso.querySelector(".preview");
-  let estado = paso.querySelector(".estado");
+  bloque.innerHTML = html;
+  cont.appendChild(bloque);
 
-  let file = input.files[0];
-  if(!file) return;
-
-  let url = URL.createObjectURL(file);
-
-  if(file.type.includes("image")){
-    preview.innerHTML = `<img src="${url}">`;
-  }else{
-    preview.innerHTML = `<video src="${url}" controls></video>`;
-  }
-
-  estado.innerHTML="✔ Completo";
-  estado.style.color="green";
-
-  preview.style.display="none";
-}
-
-// 🔹 TOGGLE
-function toggle(btn){
-  let preview = btn.parentElement.querySelector(".preview");
-  preview.style.display = preview.style.display==="none" ? "block":"none";
+  cont.appendChild(document.getElementById("selectorContainer"));
 }
 
 // 🔹 BASE64
-function toBase64(file){
-  return new Promise(r=>{
-    let reader=new FileReader();
-    reader.onload=()=>r(reader.result);
+function fileToBase64(file){
+  return new Promise((resolve)=>{
+    let reader = new FileReader();
     reader.readAsDataURL(file);
+    reader.onload = ()=>resolve(reader.result.split(",")[1]);
   });
 }
 
-// 🔹 PROGRESO
-function progress(p){
-  progressContainer.style.display="block";
-  progressBar.style.width=p+"%";
-  progressBar.innerText=p+"%";
+// 🔹 MENSAJE
+function mostrarMensaje(t, tipo){
+  let m = document.getElementById("mensaje");
+  m.className = tipo;
+  m.innerText = t;
 }
 
-// 🔹 ENVIAR
+// 🔹 ENVIAR (Power Automate)
 async function enviar(){
 
-  loader.style.display="block";
+  const fecha = document.getElementById("fecha").value;
+  const sede = document.getElementById("sede").value;
+  const cuadrilla = document.getElementById("cuadrilla").value;
+  const integrantes = document.getElementById("integrantes").value;
 
-  let data = {
-    fecha:fecha.value,
-    cuadrilla:cuadrilla.value,
-    integrantes:integrantes.value,
-    sede:sede.value,
-    registros:[]
-  };
-
-  let pasos = document.querySelectorAll(".paso");
-
-  for(let i=0;i<pasos.length;i++){
-
-    let paso = pasos[i];
-    let actividad = paso.closest(".card").querySelector(".actividad").value;
-
-    let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
-
-    if(!file){
-      alert("Falta evidencia en paso "+(i+1));
-      return;
-    }
-
-    let base64 = await toBase64(file);
-
-    data.registros.push({
-      actividad,
-      numero:i+1,
-      etapa:paso.children[1].innerText.replace("Etapa: ",""),
-      pregunta:paso.children[2].innerText.replace("Pregunta: ",""),
-      criterio:paso.children[3].innerText.replace("Criterio: ",""),
-      evidencia:paso.children[4].innerText.replace("Evidencia: ",""),
-      nombreArchivo:`${i+1}-${actividad}`,
-      file:{
-        tipo:file.type,
-        data:base64.split(",")[1]
-      }
-    });
-
-    progress(Math.round((i+1)/pasos.length*80));
+  if(!fecha || !sede || !cuadrilla || !integrantes){
+    mostrarMensaje("Completa todos los datos ⚠️", "error");
+    return;
   }
 
-  await fetch(API_ENVIO,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(data)
-  });
+  let registros = [];
+  const bloques = document.querySelectorAll(".bloque");
 
-  progress(100);
+  if(bloques.length===0){
+    mostrarMensaje("Agrega una actividad ⚠️","error");
+    return;
+  }
 
-  setTimeout(()=>{
-    alert("Gracias por contribuir con tu seguridad");
-    location.reload();
-  },800);
+  try{
+
+    for(let bloque of bloques){
+
+      let actividad = bloque.querySelector("h3").innerText;
+      let filas = bloque.querySelectorAll(".fila");
+
+      let orden = 1;
+
+      for(let i=0;i<filas.length;i++){
+
+        let fila = filas[i];
+
+        let foto = fila.querySelector(".file-foto").files[0];
+        let video = fila.querySelector(".file-video").files[0];
+
+        if(!foto && !video){
+          mostrarMensaje("Falta evidencia 📷","error");
+          return;
+        }
+
+        let file = video || foto;
+        let base64 = await fileToBase64(file);
+        let pasoData = pasos[actividad][i];
+
+        registros.push({
+          actividad,
+          numero: orden,
+          etapa: pasoData["ETAPAS DE LA ACTIVIDAD"],
+          pregunta: pasoData["PREGUNTA"],
+          criterio: pasoData["CRITERIO VISIBLE"],
+          evidencia: pasoData["EVIDENCIA ¿Qué evidencia necesito?"],
+          file:{
+            name: `${orden}-${actividad}`,
+            type: file.type,
+            data: base64
+          }
+        });
+
+        orden++;
+      }
+    }
+
+    mostrarMensaje("⏳ Enviando...", "loading");
+
+    await fetch(API_ENVIO,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        fecha,
+        sede,
+        cuadrilla,
+        integrantes,
+        registros
+      })
+    });
+
+    mostrarMensaje("Gracias por contribuir con tu seguridad ✅","ok");
+
+    document.getElementById("formularios").innerHTML="";
+    document.getElementById("cuadrilla").value="";
+    document.getElementById("integrantes").value="";
+    document.getElementById("sede").value="";
+
+  }catch(e){
+    console.error(e);
+    mostrarMensaje("Error conexión ❌","error");
+  }
 }
-
-window.onload = cargarActividades;
 
 </script>
 
