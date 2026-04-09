@@ -22,12 +22,12 @@ button {
   background:#1976d2;
   color:white;
   border:none;
-  margin-top:15px;
+  margin-top:10px;
+  border-radius:6px;
 }
 
-button:disabled {
-  background:gray;
-}
+.btn-foto { background:#4caf50; }
+.btn-video { background:#ff5722; }
 
 .card {
   border:1px solid #ccc;
@@ -40,6 +40,17 @@ button:disabled {
   border-top:1px dashed #aaa;
   margin-top:10px;
   padding-top:10px;
+}
+
+.estadoPaso {
+  font-weight:bold;
+  margin-top:5px;
+}
+
+.preview img, .preview video {
+  width:100%;
+  border-radius:8px;
+  margin-top:5px;
 }
 
 #progressContainer {
@@ -57,6 +68,12 @@ button:disabled {
   border-radius:10px;
   text-align:center;
   color:white;
+}
+
+#loader {
+  display:none;
+  text-align:center;
+  margin-top:10px;
 }
 </style>
 </head>
@@ -77,7 +94,7 @@ button:disabled {
 <input type="text" id="integrantes">
 
 <label>Sede</label>
-<select id="sede">
+<select id="sede" onchange="this.blur()">
 <option value="">Seleccione</option>
 <option>Chincha</option>
 <option>Pisco</option>
@@ -97,46 +114,45 @@ button:disabled {
   <div id="progressBar">0%</div>
 </div>
 
+<div id="loader">⏳ Enviando información...</div>
+
 </div>
 
 <script>
 
-// 🔥 ENDPOINTS
+// 🔥 ENDPOINTS (NO CAMBIAR)
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
 // FECHA
-document.getElementById("fecha").value = new Date().toISOString().split('T')[0];
+fecha.value = new Date().toISOString().split('T')[0];
 
 // 🔥 CARGAR ACTIVIDADES
 async function cargarActividades(){
-  try{
-    const res = await fetch(API_ACTIVIDADES,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({})
-    });
 
-    let text = await res.text();
-    let data = JSON.parse(text);
+  const res = await fetch(API_ACTIVIDADES,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({})
+  });
 
-    if(data.value) data = data.value;
+  let text = await res.text();
+  let data = JSON.parse(text);
 
-    window.dataActividades = data;
-    window.listaActividades = [...new Set(data.map(r => r["ACTIVIDAD"]))];
+  if(data.value) data = data.value;
 
-    document.getElementById("btnAgregar").disabled = false;
-    agregarActividad();
+  window.dataActividades = data;
+  window.listaActividades = [...new Set(data.map(r => r["ACTIVIDAD"]))];
 
-  }catch(e){
-    alert("Error cargando actividades");
-    console.error(e);
-  }
+  btnAgregar.disabled = false;
+
+  agregarActividad();
 }
 
 // 🔥 AGREGAR ACTIVIDAD
 function agregarActividad(){
+
   let div = document.createElement("div");
   div.className="card";
 
@@ -147,24 +163,26 @@ function agregarActividad(){
 
   div.innerHTML = `
     <label>Actividad</label>
-    <select class="actividad" onchange="cargarPasos(this)">
+    <select class="actividad" onchange="this.blur(); cargarPasos(this)">
       ${opciones}
     </select>
   `;
 
-  document.getElementById("actividades").appendChild(div);
+  actividades.appendChild(div);
 }
 
 // 🔥 CARGAR PASOS
 function cargarPasos(select){
+
   let actividad = select.value;
   let contenedor = select.parentElement;
 
   contenedor.querySelectorAll(".paso").forEach(e => e.remove());
 
-  let pasos = window.dataActividades.filter(r => r["ACTIVIDAD"] === actividad);
+  let pasos = dataActividades.filter(r => r["ACTIVIDAD"] === actividad);
 
   pasos.forEach((p, i)=>{
+
     let div = document.createElement("div");
     div.className = "paso";
 
@@ -181,11 +199,79 @@ function cargarPasos(select){
       <label>Evidencia requerida</label>
       <div>${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
 
-      <input type="file" class="file" multiple>
+      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="previewArchivo(this)">
+      <input type="file" class="video" accept="video/*" capture="environment" style="display:none" onchange="previewArchivo(this)">
+
+      <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
+      <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
+
+      <div class="preview"></div>
+      <div class="estadoPaso">❌ Falta evidencia</div>
     `;
 
     contenedor.appendChild(div);
   });
+}
+
+// 🔥 PREVIEW
+function previewArchivo(input){
+
+  let paso = input.parentElement;
+  let preview = paso.querySelector(".preview");
+  preview.innerHTML = "";
+
+  let file = input.files[0];
+  if(!file) return;
+
+  let url = URL.createObjectURL(file);
+
+  if(file.type.includes("image")){
+    preview.innerHTML = `<img src="${url}">`;
+  }else{
+    preview.innerHTML = `<video src="${url}" controls></video>`;
+  }
+
+  validarPaso(paso);
+  progresoPasos();
+}
+
+// 🔥 VALIDAR PASO
+function validarPaso(paso){
+
+  let foto = paso.querySelector(".foto").files.length;
+  let video = paso.querySelector(".video").files.length;
+
+  let estado = paso.querySelector(".estadoPaso");
+
+  if(foto || video){
+    estado.innerHTML = "✔ Completo";
+    estado.style.color = "green";
+  }else{
+    estado.innerHTML = "❌ Falta evidencia";
+    estado.style.color = "red";
+  }
+}
+
+// 🔥 PROGRESO
+function progresoPasos(){
+
+  let pasos = document.querySelectorAll(".paso");
+  let completos = 0;
+
+  pasos.forEach(p=>{
+    let foto = p.querySelector(".foto").files.length;
+    let video = p.querySelector(".video").files.length;
+    if(foto || video) completos++;
+  });
+
+  let porcentaje = Math.round((completos/pasos.length)*100);
+  updateProgress(porcentaje);
+}
+
+// 🔥 PROGRESO VISUAL
+function updateProgress(p){
+  progressBar.style.width = p + "%";
+  progressBar.innerText = p + "%";
 }
 
 // 🔥 BASE64
@@ -197,118 +283,102 @@ function toBase64(file){
   });
 }
 
-// 🔥 PROGRESO
-function updateProgress(p){
-  let bar = document.getElementById("progressBar");
-  bar.style.width = p + "%";
-  bar.innerText = p + "%";
-}
-
-// 🔥 ENVIAR (CORREGIDO)
+// 🔥 ENVIAR
 async function enviar(){
 
-  try{
+  let incompletos = false;
 
-    document.getElementById("btnEnviar").disabled = true;
-    document.getElementById("progressContainer").style.display = "block";
+  document.querySelectorAll(".paso").forEach(p=>{
+    let foto = p.querySelector(".foto").files.length;
+    let video = p.querySelector(".video").files.length;
+    if(!(foto || video)) incompletos = true;
+  });
 
-    let data = {
-      fecha: fecha.value,
-      cuadrilla: cuadrilla.value,
-      integrantes: integrantes.value,
-      sede: sede.value,
-      registros:[]
-    };
+  if(incompletos){
+    alert("Debe completar todas las evidencias");
+    return;
+  }
 
-    let totalFiles = 0;
+  btnEnviar.disabled = true;
+  progressContainer.style.display = "block";
+  loader.style.display = "block";
 
-    document.querySelectorAll(".file").forEach(f=>{
-      totalFiles += f.files.length;
-    });
+  let data = {
+    fecha: fecha.value,
+    cuadrilla: cuadrilla.value,
+    integrantes: integrantes.value,
+    sede: sede.value,
+    registros:[]
+  };
 
-    if(totalFiles === 0){
-      alert("Debe subir al menos una evidencia");
-      document.getElementById("btnEnviar").disabled = false;
-      return;
-    }
+  let total = document.querySelectorAll(".foto, .video")
+    .reduce((sum,f)=>sum+f.files.length,0);
 
-    let processed = 0;
+  let procesados = 0;
 
-    for(let card of document.querySelectorAll(".card")){
+  for(let card of document.querySelectorAll(".card")){
 
-      let actividad = card.querySelector(".actividad").value;
+    let actividad = card.querySelector(".actividad").value;
+    let pasos = card.querySelectorAll(".paso");
 
-      let pasos = card.querySelectorAll(".paso");
+    for(let i=0;i<pasos.length;i++){
 
-      for(let i=0; i<pasos.length; i++){
+      let paso = pasos[i];
 
-        let paso = pasos[i];
-        let files = paso.querySelector(".file").files;
+      let files = [
+        ...paso.querySelector(".foto").files,
+        ...paso.querySelector(".video").files
+      ];
 
-        let etapa = paso.children[1].innerText;
-        let pregunta = paso.children[3].innerText;
-        let criterio = paso.children[5].innerText;
-        let evidencia = paso.children[7].innerText;
+      let etapa = paso.children[1].innerText;
+      let pregunta = paso.children[3].innerText;
+      let criterio = paso.children[5].innerText;
+      let evidencia = paso.children[7].innerText;
 
-        for(let j=0; j<files.length; j++){
+      for(let j=0;j<files.length;j++){
 
-          let file = files[j];
+        let file = files[j];
 
-          let nombreArchivo = `${i+1}-${etapa}`;
-          if(j > 0) nombreArchivo += `(${j})`;
+        let nombre = `${i+1}-${etapa}`;
+        if(j>0) nombre += `(${j})`;
 
-          let base64 = await toBase64(file);
+        let base64 = await toBase64(file);
 
-          data.registros.push({
-            actividad,
-            numero: i+1,
-            etapa,
-            pregunta,
-            criterio,
-            evidencia,
-            nombreArchivo,
-            file:{
-              nombre: nombreArchivo,
-              tipo: file.type,
-              data: base64.split(",")[1]
-            }
-          });
+        data.registros.push({
+          actividad,
+          numero:i+1,
+          etapa,
+          pregunta,
+          criterio,
+          evidencia,
+          nombreArchivo:nombre,
+          file:{
+            tipo:file.type,
+            data:base64.split(",")[1]
+          }
+        });
 
-          processed++;
-          updateProgress(Math.round((processed / totalFiles) * 100));
-        }
+        procesados++;
+        updateProgress(Math.round((procesados/total)*100));
       }
     }
-
-    // 🔥 ENVÍO REAL
-    const res = await fetch(API_ENVIO,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify(data)
-    });
-
-    if(!res.ok){
-      throw new Error("Error en envío");
-    }
-
-    updateProgress(100);
-
-    setTimeout(()=>{
-      alert("Gracias por contribuir con tu seguridad");
-      location.reload();
-    },1000);
-
-  }catch(e){
-    alert("Error al enviar");
-    console.error(e);
-    document.getElementById("btnEnviar").disabled = false;
   }
+
+  await fetch(API_ENVIO,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(data)
+  });
+
+  updateProgress(100);
+
+  setTimeout(()=>{
+    alert("Gracias por contribuir con tu seguridad");
+    location.reload();
+  },1000);
 }
 
-// INIT
-window.onload = ()=>{
-  cargarActividades();
-}
+window.onload = cargarActividades;
 
 </script>
 
