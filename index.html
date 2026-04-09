@@ -28,7 +28,7 @@ button {
 
 .btn-foto { background:#4caf50; }
 .btn-video { background:#ff5722; }
-.btn-ver { background:#607d8b; }
+.btn-stop { background:#d32f2f; }
 
 .card {
   border:1px solid #ccc;
@@ -44,8 +44,7 @@ button {
 }
 
 .estado { font-weight:bold; margin-top:5px; }
-
-.preview { display:none; }
+.preview video, .preview img { width:100%; margin-top:5px; }
 
 #progressContainer {
   width:100%;
@@ -68,7 +67,6 @@ button {
   display:none;
   text-align:center;
   margin-top:10px;
-  font-weight:bold;
 }
 </style>
 </head>
@@ -99,7 +97,7 @@ button {
 <div id="actividades"></div>
 
 <button onclick="agregarActividad()">Agregar Actividad</button>
-<button id="btnEnviar" onclick="enviar()">Enviar</button>
+<button onclick="enviar()">Enviar</button>
 
 <div id="progressContainer">
   <div id="progressBar">0%</div>
@@ -111,13 +109,14 @@ button {
 
 <script>
 
+// ENDPOINTS
 const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
 fecha.value = new Date().toISOString().split('T')[0];
 
-// 🔥 CARGAR ACTIVIDADES
+// CARGAR ACTIVIDADES
 async function cargarActividades(){
   let res = await fetch(API_ACTIVIDADES,{method:"POST"});
   let data = await res.json();
@@ -129,7 +128,7 @@ async function cargarActividades(){
   agregarActividad();
 }
 
-// 🔥 AGREGAR ACTIVIDAD
+// AGREGAR ACTIVIDAD
 function agregarActividad(){
   let div = document.createElement("div");
   div.className="card";
@@ -146,7 +145,7 @@ function agregarActividad(){
   actividades.appendChild(div);
 }
 
-// 🔥 CARGAR PASOS
+// PASOS
 function cargarPasos(select){
 
   let cont = select.parentElement;
@@ -162,18 +161,19 @@ function cargarPasos(select){
     div.innerHTML = `
       <b>Paso ${i+1}</b>
 
-      <div><b>Etapa:</b> ${p["ETAPAS DE LA ACTIVIDAD"]}</div>
-      <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
-      <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
-      <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
+      <div>Etapa: ${p["ETAPAS DE LA ACTIVIDAD"]}</div>
+      <div>Pregunta: ${p["PREGUNTA"]}</div>
+      <div>Criterio: ${p["CRITERIO VISIBLE"]}</div>
+      <div>Evidencia: ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
 
       <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
-      <input type="file" class="video" accept="video/*" style="display:none" onchange="archivo(this)">
 
-      <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
-      <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
+      <button class="btn-foto" onclick="this.previousElementSibling.click()">📷 Foto</button>
 
-      <button class="btn-ver" onclick="toggle(this)">👁 Ver evidencia</button>
+      <button class="btn-video" onclick="iniciarVideo(this)">🎥 Video</button>
+      <button class="btn-stop" onclick="detenerVideo(this)">⏹ Detener</button>
+
+      <video class="videoPreview" autoplay muted style="display:none"></video>
 
       <div class="preview"></div>
       <div class="estado">❌ Falta evidencia</div>
@@ -183,44 +183,62 @@ function cargarPasos(select){
   });
 }
 
-// 🔥 PREVIEW
+// VIDEO REAL
+let mediaRecorder;
+let recordedChunks = [];
+
+async function iniciarVideo(btn){
+
+  let paso = btn.parentElement;
+  let video = paso.querySelector(".videoPreview");
+
+  let stream = await navigator.mediaDevices.getUserMedia({
+    video:{ facingMode:"environment" },
+    audio:true
+  });
+
+  video.srcObject = stream;
+  video.style.display="block";
+
+  recordedChunks = [];
+
+  mediaRecorder = new MediaRecorder(stream);
+
+  mediaRecorder.ondataavailable = e=>{
+    if(e.data.size>0) recordedChunks.push(e.data);
+  };
+
+  mediaRecorder.start();
+}
+
+function detenerVideo(btn){
+
+  mediaRecorder.stop();
+
+  let blob = new Blob(recordedChunks,{type:"video/mp4"});
+
+  let paso = btn.parentElement;
+  paso.videoBlob = blob;
+
+  paso.querySelector(".estado").innerHTML="✔ Video grabado";
+  paso.querySelector(".estado").style.color="green";
+}
+
+// FOTO
 function archivo(input){
 
   let paso = input.parentElement;
-  let preview = paso.querySelector(".preview");
-  let estado = paso.querySelector(".estado");
-
   let file = input.files[0];
-  if(!file) return;
 
   let url = URL.createObjectURL(file);
 
-  if(file.type.includes("image")){
-    preview.innerHTML = `<img src="${url}" style="width:100%">`;
-  }else{
-    preview.innerHTML = `<video src="${url}" controls style="width:100%"></video>`;
-  }
+  paso.querySelector(".preview").innerHTML = `<img src="${url}">`;
 
-  estado.innerHTML="✔ Completo";
-  estado.style.color="green";
-
-  preview.style.display="none";
+  paso.querySelector(".estado").innerHTML="✔ Completo";
+  paso.querySelector(".estado").style.color="green";
 }
 
-// 🔥 TOGGLE
-function toggle(btn){
-  let preview = btn.parentElement.querySelector(".preview");
-
-  if(preview.style.display=="none"){
-    preview.style.display="block";
-    btn.innerText="🔽 Ocultar";
-  }else{
-    preview.style.display="none";
-    btn.innerText="👁 Ver evidencia";
-  }
-}
-
-// 🔥 BASE64
+// BASE64
 function toBase64(file){
   return new Promise(r=>{
     let reader=new FileReader();
@@ -229,14 +247,14 @@ function toBase64(file){
   });
 }
 
-// 🔥 PROGRESO
+// PROGRESO
 function progress(p){
   progressContainer.style.display="block";
   progressBar.style.width=p+"%";
   progressBar.innerText=p+"%";
 }
 
-// 🔥 ENVIAR
+// ENVIAR
 async function enviar(){
 
   loader.style.display="block";
@@ -256,7 +274,7 @@ async function enviar(){
     let paso = pasos[i];
     let actividad = paso.closest(".card").querySelector(".actividad").value;
 
-    let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
+    let file = paso.querySelector(".foto").files[0] || paso.videoBlob;
 
     if(!file){
       alert("Falta evidencia en paso "+(i+1));
@@ -268,13 +286,13 @@ async function enviar(){
     data.registros.push({
       actividad,
       numero:i+1,
-      etapa:paso.children[1].innerText,
-      pregunta:paso.children[2].innerText,
-      criterio:paso.children[3].innerText,
-      evidencia:paso.children[4].innerText,
+      etapa:paso.children[1].innerText.replace("Etapa: ",""),
+      pregunta:paso.children[2].innerText.replace("Pregunta: ",""),
+      criterio:paso.children[3].innerText.replace("Criterio: ",""),
+      evidencia:paso.children[4].innerText.replace("Evidencia: ",""),
       nombreArchivo:`${i+1}-${actividad}`,
       file:{
-        tipo:file.type,
+        tipo:file.type || "video/mp4",
         data:base64.split(",")[1]
       }
     });
