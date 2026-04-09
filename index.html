@@ -2,67 +2,73 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Autocheck Técnico</title>
 
 <style>
-body { font-family: Arial; margin: 10px; }
-.container { max-width: 1000px; margin: auto; }
+body { font-family: Arial; margin:10px; }
+.container { max-width:600px; margin:auto; }
 
-label { font-weight: bold; display: block; margin-top: 10px; }
+.row { display:flex; gap:5px; }
+.row > * { flex:1; }
 
-.row {
-  display:flex;
-  gap:10px;
-}
-
-.row div { flex:1; }
-.row div:nth-child(3){ flex:0.7; }
-
-input, select {
-  width: 100%;
-  padding: 8px;
-  margin-top: 5px;
-}
-
-.bloque {
-  border: 2px solid #000;
-  padding: 10px;
-  margin-top: 20px;
-}
-
-.fila {
-  border-bottom: 1px solid #ccc;
-  padding: 10px 0;
+input, select, button {
+  width:100%;
+  padding:8px;
+  margin-top:5px;
+  font-size:14px;
 }
 
 button {
-  margin-top: 10px;
-  padding: 10px;
   border:none;
-  border-radius:8px;
+  border-radius:6px;
   color:white;
-  font-weight:bold;
-  cursor:pointer;
+  background:#1976d2;
 }
 
 .btn-foto { background:#4caf50; }
 .btn-video { background:#ff5722; }
-.btn-preview { background:#607d8b; }
-.btn-delete { background:red; }
+.btn-ver { background:#607d8b; }
 
-.preview {
-  display:none;
-  margin-top:5px;
+.card {
+  border:1px solid #ccc;
+  padding:10px;
+  margin-top:10px;
+  border-radius:6px;
 }
 
-.preview img, .preview video {
+.paso {
+  border-top:1px dashed #aaa;
+  margin-top:10px;
+  padding-top:10px;
+}
+
+.estado { font-weight:bold; margin-top:5px; }
+
+.preview video, .preview img { width:100%; margin-top:5px; }
+
+#progressContainer {
   width:100%;
+  background:#ddd;
+  border-radius:10px;
+  margin-top:10px;
+  display:none;
 }
 
-#mensaje {
-  margin-top: 15px;
-  text-align: center;
-  font-weight: bold;
+#progressBar {
+  width:0%;
+  height:20px;
+  background:#4caf50;
+  border-radius:10px;
+  text-align:center;
+  color:white;
+}
+
+#loader {
+  display:none;
+  text-align:center;
+  margin-top:10px;
+  font-weight:bold;
 }
 </style>
 </head>
@@ -71,199 +77,221 @@ button {
 
 <div class="container">
 
-<h2>Autocheck Técnico</h2>
+<h3>Autocheck Técnico</h3>
 
 <div class="row">
-  <div>
-    <label>Fecha:</label>
-    <input type="date" id="fecha">
-  </div>
-
-  <div>
-    <label>Sede:</label>
-    <select id="sede" onchange="this.blur()">
-      <option value="">Seleccione...</option>
-      <option>Chincha</option>
-      <option>Pisco</option>
-      <option>Ica</option>
-      <option>Nasca</option>
-      <option>Palpa</option>
-      <option>Puquio</option>
-      <option>Coracora</option>
-    </select>
-  </div>
-
-  <div>
-    <label>Cuadrilla:</label>
-    <input type="text" id="cuadrilla">
-  </div>
+<input type="date" id="fecha">
+<input type="text" id="cuadrilla" placeholder="Cuadrilla">
+<select id="sede" onchange="this.blur()">
+<option value="">Sede</option>
+<option>Chincha</option>
+<option>Pisco</option>
+<option>Ica</option>
+<option>Nasca</option>
+<option>Palpa</option>
+<option>Puquio</option>
+<option>Coracora</option>
+</select>
 </div>
 
-<label>Integrantes:</label>
-<input type="text" id="integrantes">
+<input type="text" id="integrantes" placeholder="Integrantes">
 
-<div id="formularios"></div>
+<div id="actividades"></div>
 
-<label>Agregar actividad:</label>
-<select id="selectorActividad">
-  <option value="">Seleccione actividad</option>
-</select>
-
+<button onclick="agregarActividad()">Agregar Actividad</button>
 <button onclick="enviar()">Enviar</button>
 
-<div id="mensaje"></div>
+<div id="progressContainer">
+  <div id="progressBar">0%</div>
+</div>
+
+<div id="loader">⏳ Enviando información...</div>
 
 </div>
 
 <script>
 
-const API_URL = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
+const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
 const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
-document.getElementById("fecha").valueAsDate = new Date();
+fecha.value = new Date().toISOString().split('T')[0];
 
-let pasos = {};
-
-// 🔹 CARGAR ACTIVIDADES
+// CARGAR ACTIVIDADES
 async function cargarActividades(){
-  const res = await fetch(API_URL);
-  const data = await res.json();
+  let res = await fetch(API_ACTIVIDADES,{method:"POST"});
+  let data = await res.json();
+  if(data.value) data = data.value;
 
-  pasos = data.pasos;
+  window.dataActividades = data;
+  window.listaActividades = [...new Set(data.map(x=>x.ACTIVIDAD))];
 
-  const selector = document.getElementById("selectorActividad");
-
-  data.actividades.forEach(a => {
-    let opt = document.createElement("option");
-    opt.value = a;
-    opt.textContent = a;
-    selector.appendChild(opt);
-  });
+  agregarActividad();
 }
 
-cargarActividades();
+// AGREGAR ACTIVIDAD
+function agregarActividad(){
 
-// 🔹 AGREGAR ACTIVIDAD
-selectorActividad.addEventListener("change", function(){
-  if(!this.value) return;
-  crearFormulario(this.value);
-  this.value = "";
-});
+  let div = document.createElement("div");
+  div.className="card";
 
-// 🔹 CREAR FORMULARIO
-function crearFormulario(actividad){
+  let opciones = `<option value="">Seleccione actividad</option>`;
+  listaActividades.forEach(a => opciones += `<option>${a}</option>`);
 
-  let cont = document.getElementById("formularios");
+  div.innerHTML = `
+    <select class="actividad" onchange="this.blur(); cargarPasos(this)">
+      ${opciones}
+    </select>
+  `;
 
-  let bloque = document.createElement("div");
-  bloque.className = "bloque";
+  actividades.appendChild(div);
+}
 
-  let html = `<h3>${actividad}</h3>`;
+// PASOS
+function cargarPasos(select){
 
-  pasos[actividad].forEach((p,i) => {
+  let cont = select.parentElement;
+  cont.querySelectorAll(".paso").forEach(e=>e.remove());
 
-    html += `
-    <div class="fila">
+  let pasos = dataActividades.filter(x => x.ACTIVIDAD === select.value);
 
-      <div><b>${i+1}. ${p.d}</b></div>
-      <div><b>Criterio:</b> ${p.e}</div>
-      <div><b>Evidencia:</b> ${p.f}</div>
+  pasos.forEach((p,i)=>{
 
-      <input type="file" class="file-foto" accept="image/*" capture="environment" style="display:none" onchange="preview(this)">
-      
-      <!-- 🔥 FIX SAMSUNG -->
-      <input type="file" class="file-video" accept="video/*" style="display:none" onchange="preview(this)">
+    let div = document.createElement("div");
+    div.className="paso";
 
-      <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷</button>
-      <button class="btn-video" onclick="this.previousElementSibling.click()">🎥</button>
-      <button class="btn-preview" onclick="toggle(this)">👁</button>
+    div.innerHTML = `
+      <b>Paso ${i+1}</b>
+
+      <div><b>Etapa:</b> ${p["ETAPAS DE LA ACTIVIDAD"]}</div>
+      <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
+      <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
+      <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
+
+      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
+      <input type="file" class="video" accept="video/*" capture="environment" style="display:none" onchange="archivo(this)">
+
+      <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
+      <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
+
+      <button class="btn-ver" onclick="toggle(this)">👁 Ver evidencia</button>
 
       <div class="preview"></div>
+      <div class="estado">❌ Falta evidencia</div>
+    `;
 
-    </div>`;
+    cont.appendChild(div);
   });
-
-  html += `<button class="btn-delete" onclick="this.parentElement.remove()">Eliminar</button>`;
-
-  bloque.innerHTML = html;
-  cont.appendChild(bloque);
-
-  cont.appendChild(document.getElementById("selectorActividad"));
 }
 
-// 🔹 PREVIEW
-function preview(input){
+// PREVIEW
+function archivo(input){
 
-  let fila = input.parentElement;
-  let preview = fila.querySelector(".preview");
+  let paso = input.parentElement;
+  let preview = paso.querySelector(".preview");
+  let estado = paso.querySelector(".estado");
 
   let file = input.files[0];
+  if(!file) return;
+
   let url = URL.createObjectURL(file);
 
-  preview.innerHTML = file.type.includes("image")
-    ? `<img src="${url}">`
-    : `<video src="${url}" controls></video>`;
-}
-
-// 🔹 TOGGLE
-function toggle(btn){
-  let preview = btn.parentElement.querySelector(".preview");
-  preview.style.display = preview.style.display==="block" ? "none":"block";
-}
-
-// 🔹 BASE64
-function fileToBase64(file){
-  return new Promise((resolve)=>{
-    let reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = ()=>resolve(reader.result.split(",")[1]);
-  });
-}
-
-// 🔹 ENVIAR (MISMO FLUJO)
-async function enviar(){
-
-  const bloques = document.querySelectorAll(".bloque");
-
-  for (let bloque of bloques){
-
-    let actividad = bloque.querySelector("h3").innerText;
-    let filas = bloque.querySelectorAll(".fila");
-
-    for (let i = 0; i < filas.length; i++){
-
-      let fila = filas[i];
-
-      let foto = fila.querySelector(".file-foto").files[0];
-      let video = fila.querySelector(".file-video").files[0];
-
-      if(!foto && !video){
-        mensaje.innerText = `Falta evidencia en ${actividad} paso ${i+1}`;
-        return;
-      }
-    }
+  if(file.type.includes("image")){
+    preview.innerHTML = `<img src="${url}">`;
+  }else{
+    preview.innerHTML = `<video src="${url}" controls></video>`;
   }
 
-  mensaje.innerText="Enviando...";
+  estado.innerHTML="✔ Completo";
+  estado.style.color="green";
 
-  fetch(API_ENVIO,{
-    method:"POST",
-    body: JSON.stringify({
-      fecha:fecha.value,
-      sede:sede.value,
-      cuadrilla:cuadrilla.value,
-      integrantes:integrantes.value
-    })
-  })
-  .then(()=> {
-    mensaje.innerText="Gracias por contribuir con tu seguridad";
-    location.reload();
-  })
-  .catch(()=>{
-    mensaje.innerText="Error conexión";
+  preview.style.display="none";
+}
+
+// TOGGLE
+function toggle(btn){
+  let preview = btn.parentElement.querySelector(".preview");
+
+  preview.style.display = preview.style.display==="none" ? "block":"none";
+}
+
+// BASE64
+function toBase64(file){
+  return new Promise(r=>{
+    let reader=new FileReader();
+    reader.onload=()=>r(reader.result);
+    reader.readAsDataURL(file);
   });
 }
+
+// PROGRESO
+function progress(p){
+  progressContainer.style.display="block";
+  progressBar.style.width=p+"%";
+  progressBar.innerText=p+"%";
+}
+
+// ENVIAR
+async function enviar(){
+
+  loader.style.display="block";
+
+  let data = {
+    fecha:fecha.value,
+    cuadrilla:cuadrilla.value,
+    integrantes:integrantes.value,
+    sede:sede.value,
+    registros:[]
+  };
+
+  let pasos = document.querySelectorAll(".paso");
+
+  for(let i=0;i<pasos.length;i++){
+
+    let paso = pasos[i];
+    let actividad = paso.closest(".card").querySelector(".actividad").value;
+
+    let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
+
+    if(!file){
+      alert("Falta evidencia en paso "+(i+1));
+      return;
+    }
+
+    let base64 = await toBase64(file);
+
+    data.registros.push({
+      actividad,
+      numero:i+1,
+      etapa:paso.children[1].innerText.replace("Etapa: ",""),
+      pregunta:paso.children[2].innerText.replace("Pregunta: ",""),
+      criterio:paso.children[3].innerText.replace("Criterio: ",""),
+      evidencia:paso.children[4].innerText.replace("Evidencia: ",""),
+      nombreArchivo:`${i+1}-${actividad}`,
+      file:{
+        tipo:file.type,
+        data:base64.split(",")[1]
+      }
+    });
+
+    progress(Math.round((i+1)/pasos.length*80));
+  }
+
+  await fetch(API_ENVIO,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(data)
+  });
+
+  progress(100);
+
+  setTimeout(()=>{
+    alert("Gracias por contribuir con tu seguridad");
+    location.reload();
+  },800);
+}
+
+window.onload = cargarActividades;
 
 </script>
 
