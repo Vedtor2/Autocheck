@@ -131,6 +131,70 @@
       box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
     }
 
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+
+    .btn-eliminar {
+      width: auto;
+      margin-top: 0;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: #e78b8b;
+      color: white;
+      font-size: 13px;
+    }
+
+    .btn-eliminar:hover {
+      background: #d97777;
+    }
+
+    .modal-video {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 20px;
+    }
+
+    .modal-video-content {
+      background: white;
+      width: 100%;
+      max-width: 420px;
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .modal-video video {
+      width: 100%;
+      border-radius: 14px;
+      background: black;
+    }
+
+    .video-controles {
+      display: flex;
+      gap: 10px;
+    }
+
+    .video-controles button {
+      margin-top: 14px;
+    }
+
+    .tiempo-grabacion {
+      text-align: center;
+      margin-top: 10px;
+      font-weight: bold;
+      color: #c26d4f;
+    }
+
     .actividad {
       font-weight: 600;
     }
@@ -298,6 +362,7 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+      margin-top: 6px;
     }
 
     .estado {
@@ -386,11 +451,42 @@
 
   </div>
 
+  <div class="modal-video" id="modalVideo">
+
+    <div class="modal-video-content">
+
+      <video id="videoPreview" autoplay muted playsinline></video>
+
+      <div class="tiempo-grabacion">
+        Tiempo restante: <span id="contador">15</span>s
+      </div>
+
+      <div class="video-controles">
+        <button id="btnIniciar">
+          <i class="fa-solid fa-circle"></i>Grabar
+        </button>
+
+        <button id="btnDetener">
+          <i class="fa-solid fa-stop"></i>Detener
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
   <script>
 
     const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
     const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
+
+    let mediaRecorder;
+    let videoChunks = [];
+    let streamActual = null;
+    let inputVideoActual = null;
+    let timerGrabacion;
+    let segundosRestantes = 15;
 
     fecha.value = new Date().toISOString().split('T')[0];
 
@@ -471,17 +567,33 @@
       listaActividades.forEach(a => opciones += `<option>${a}</option>`);
 
       div.innerHTML = `
-    <select class="actividad" onchange="this.blur(); cargarPasos(this)">
-      ${opciones}
-    </select>
-  `;
+
+        <div class="card-header">
+          <select class="actividad" onchange="this.blur(); cargarPasos(this)">
+            ${opciones}
+          </select>
+
+          <button class="btn-eliminar" onclick="eliminarActividad(this)">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+
+        <div class="card-body"></div>
+      `;
 
       actividades.appendChild(div);
     }
 
+    function eliminarActividad(btn) {
+
+      let card = btn.closest(".card");
+
+      card.remove();
+    }
+
     function cargarPasos(select) {
 
-      let cont = select.parentElement;
+      let cont = select.closest(".card").querySelector(".card-body");
       cont.querySelectorAll(".paso").forEach(e => e.remove());
 
       let pasos = dataActividades.filter(x => x.ACTIVIDAD === select.value);
@@ -492,41 +604,39 @@
         div.className = "paso";
 
         div.innerHTML = `
-      <div class="titulo-paso">
-        <i class="fa-solid fa-list-check"></i>
-        <b>Paso ${i + 1}</b>
-      </div>
+          <div class="titulo-paso">
+            <i class="fa-solid fa-list-check"></i>
+            <b>Paso ${i + 1}</b>
+          </div>
 
-      <div><b>Etapa:</b> ${p["ETAPAS DE LA ACTIVIDAD"]}</div>
-      <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
-      <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
-      <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
+          <div><b>Etapa:</b> ${p["ETAPAS DE LA ACTIVIDAD"]}</div>
+          <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
+          <div><b>Criterio:</b> ${p["CRITERIO VISIBLE"]}</div>
+          <div><b>Evidencia:</b> ${p["EVIDENCIA ¿Qué evidencia necesito?"]}</div>
 
-      <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
-      <input type="file" class="video" accept="video/*" capture="environment" style="display:none" onchange="archivo(this)">
+          <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
+          <input type="file" class="video" accept="video/*" capture="environment" style="display:none" onchange="archivo(this)">
 
-      <div class="botones-evidencia">
+          <div class="botones-evidencia">
+            <button class="btn-foto" onclick="this.parentElement.previousElementSibling.previousElementSibling.click()">
+              <i class="fa-solid fa-camera"></i>Foto
+            </button>
 
-        <button class="btn-foto" onclick="this.parentElement.previousElementSibling.previousElementSibling.click()">
-          <i class="fa-solid fa-camera"></i>Foto
-        </button>
+            <button class="btn-video" onclick="abrirCamaraVideo(this)">
+              <i class="fa-solid fa-video"></i>Video
+            </button>
+          </div>
 
-        <button class="btn-video" onclick="this.parentElement.previousElementSibling.click()">
-          <i class="fa-solid fa-video"></i>Video
-        </button>
+          <button class="btn-ver" onclick="toggle(this)">
+            <i class="fa-solid fa-eye"></i>Ver evidencia
+          </button>
 
-      </div>
+          <div class="preview" style="display:none;"></div>
 
-      <button class="btn-ver" onclick="toggle(this)">
-        <i class="fa-solid fa-eye"></i>Ver evidencia
-      </button>
-
-      <div class="preview" style="display:none;"></div>
-
-      <div class="estado pendiente">
-        <i class="fa-solid fa-circle-exclamation"></i>Evidencia pendiente
-      </div>
-    `;
+          <div class="estado pendiente">
+            <i class="fa-solid fa-circle-exclamation"></i>Evidencia pendiente
+          </div>
+        `;
 
         cont.appendChild(div);
       });
@@ -572,6 +682,96 @@
         <i class="fa-solid fa-eye-slash"></i>
         Ocultar evidencia
       `;
+    }
+
+    async function abrirCamaraVideo(btn) {
+      try {
+
+        inputVideoActual = btn.parentElement.previousElementSibling;
+
+        const modal = document.getElementById("modalVideo");
+        const video = document.getElementById("videoPreview");
+
+        modal.style.display = "flex";
+        streamActual = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment"
+          },
+          audio: true
+        });
+
+        video.srcObject = streamActual;
+
+      } catch (err) {
+        alert("No se pudo acceder a la cámara");
+        console.error(err);
+      }
+    }
+
+    document.getElementById("btnIniciar").onclick = () => {
+
+      videoChunks = [];
+      segundosRestantes = 15;
+      contador.innerText = segundosRestantes;
+      mediaRecorder = new MediaRecorder(streamActual);
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) {
+          videoChunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+
+        let blob = new Blob(videoChunks, {
+          type: "video/webm"
+        });
+
+        let file = new File(
+          [blob],
+          "video.webm",
+          {
+            type: "video/webm"
+          }
+        );
+
+        const dataTransfer = new DataTransfer();
+
+        dataTransfer.items.add(file);
+        inputVideoActual.files = dataTransfer.files;
+        archivo(inputVideoActual);
+        cerrarModalVideo();
+      };
+
+      mediaRecorder.start();
+
+      timerGrabacion = setInterval(() => {
+        segundosRestantes--;
+        contador.innerText = segundosRestantes;
+        if (segundosRestantes <= 0) {
+          detenerGrabacion();
+        }
+      }, 1000);
+    };
+
+    document.getElementById("btnDetener").onclick = () => {
+      detenerGrabacion();
+    };
+
+    function detenerGrabacion() {
+
+      clearInterval(timerGrabacion);
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+    }
+
+    function cerrarModalVideo() {
+
+      document.getElementById("modalVideo").style.display = "none";
+
+      if (streamActual) {
+        streamActual.getTracks().forEach(track => track.stop());
+      }
     }
 
     function toggle(btn) {
@@ -666,4 +866,5 @@
   </script>
 
 </body>
+
 </html>
