@@ -1,221 +1,500 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Autocheck Técnico</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autocheck Técnico</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-<style>
-body { font-family: Arial; margin:10px; }
-.container { max-width:600px; margin:auto; }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #f4f6f9;
+      color: #374151;
+    }
 
-.row { display:flex; gap:5px; }
-.row > * { flex:1; }
+    .container {
+      max-width: 760px;
+      margin: auto;
+      background: #ffffff;
+      padding: 24px;
+      border-radius: 22px;
+      box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.05),
+        0 2px 8px rgba(0, 0, 0, 0.03);
+    }
 
-input, select, button {
-  width:100%;
-  padding:8px;
-  margin-top:5px;
-  font-size:14px;
-}
+    h3 {
+      margin-top: 0;
+      margin-bottom: 22px;
+      text-align: center;
+      color: #34495e;
+      font-size: 28px;
+      font-weight: 700;
+    }
 
-button {
-  border:none;
-  border-radius:6px;
-  color:white;
-  background:#1976d2;
-}
+    .row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
 
-.btn-foto { background:#4caf50; }
-.btn-video { background:#ff5722; }
-.btn-ver { background:#607d8b; }
+    .row>* {
+      flex: 1;
+    }
 
-.card {
-  border:1px solid #ccc;
-  padding:10px;
-  margin-top:10px;
-  border-radius:6px;
-}
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 14px;
+      border: 1px solid #d6dde6;
+      background: #fafbfd;
+      font-size: 14px;
+      transition: 0.2s ease;
+      color: #374151;
+    }
 
-.paso {
-  border-top:1px dashed #aaa;
-  margin-top:10px;
-  padding-top:10px;
-}
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #9bb5cc;
+      box-shadow: 0 0 0 4px rgba(155, 181, 204, 0.15);
+      background: white;
+    }
 
-.estado { font-weight:bold; margin-top:5px; }
+    input::placeholder {
+      color: #9ca3af;
+    }
 
-.preview video, .preview img { width:100%; margin-top:5px; }
+    button {
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: 0.25s ease;
+    }
 
-#progressContainer {
-  width:100%;
-  background:#ddd;
-  border-radius:10px;
-  margin-top:10px;
-  display:none;
-}
+    button:hover {
+      transform: translateY(-1px);
+    }
 
-#progressBar {
-  width:0%;
-  height:20px;
-  background:#4caf50;
-  border-radius:10px;
-  text-align:center;
-  color:white;
-}
+    button:active {
+      transform: scale(0.98);
+    }
 
-#loader {
-  display:none;
-  text-align:center;
-  margin-top:10px;
-  font-weight:bold;
-}
-</style>
+    .btn-foto {
+      background: #6fae8f;
+      color: white;
+    }
+
+    .btn-foto:hover {
+      background: #5f9b7f;
+    }
+
+    .btn-video {
+      background: #d89a7a;
+      color: white;
+    }
+
+    .btn-video:hover {
+      background: #c88766;
+    }
+
+    .btn-ver {
+      background: #90a4b8;
+      color: white;
+    }
+
+    .btn-ver:hover {
+      background: #7d93a7;
+    }
+
+    .card {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 20px;
+      background: #fbfcfd;
+      border: 1px solid #e5ebf1;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
+    }
+
+    .actividad {
+      font-weight: 600;
+    }
+
+    .paso {
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 16px;
+      background: white;
+      border: 1px solid #edf1f5;
+    }
+
+    .paso b {
+      color: #425466;
+    }
+
+    .paso div {
+      margin-top: 6px;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .estado {
+      margin-top: 12px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .preview {
+      margin-top: 12px;
+    }
+
+    .preview img,
+    .preview video {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid #dbe3ea;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+    }
+
+    #progressContainer {
+      width: 100%;
+      background: #e7edf3;
+      border-radius: 30px;
+      overflow: hidden;
+      margin-top: 22px;
+      display: none;
+      height: 24px;
+    }
+
+    #progressBar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #7aa6c7, #8cc6a7);
+      text-align: center;
+      color: white;
+      font-size: 13px;
+      font-weight: bold;
+      line-height: 24px;
+      transition: 0.3s ease;
+    }
+
+    #loader {
+      display: none;
+      text-align: center;
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 14px;
+      background: #fff4e5;
+      color: #a56a1d;
+      font-weight: 600;
+    }
+
+    /* BOTONES PRINCIPALES */
+
+    button[onclick="agregarActividad()"] {
+      background: #7d9db8;
+      color: white;
+    }
+
+    button[onclick="agregarActividad()"]:hover {
+      background: #6f8ea8;
+    }
+
+    button[onclick="enviar()"] {
+      background: linear-gradient(135deg, #7aa6c7, #8cc6a7);
+      color: white;
+      font-size: 15px;
+    }
+
+    button[onclick="enviar()"]:hover {
+      opacity: 0.95;
+    }
+
+    /* RESPONSIVE */
+
+    @media (max-width: 768px) {
+
+      body {
+        padding: 10px;
+      }
+
+      .container {
+        padding: 18px;
+        border-radius: 18px;
+      }
+
+      h3 {
+        font-size: 24px;
+      }
+
+      .row {
+        flex-direction: column;
+        gap: 0;
+      }
+
+      button {
+        font-size: 15px;
+        padding: 15px;
+      }
+
+      .paso {
+        padding: 15px;
+      }
+
+      .preview img,
+      .preview video {
+        max-height: 320px;
+        object-fit: cover;
+      }
+    }
+
+    @media (max-width: 480px) {
+
+      h3 {
+        font-size: 22px;
+      }
+
+      input,
+      select,
+      button {
+        font-size: 16px;
+      }
+
+      .paso div {
+        font-size: 13px;
+      }
+    }
+
+    .botones-evidencia {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .botones-evidencia button {
+      margin-top: 0;
+    }
+
+    .btn-foto,
+    .btn-video,
+    .btn-ver {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .estado {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .estado.pendiente {
+      background: #fff7ed;
+      color: #c27a2c;
+      border: 1px solid #f3d7b6;
+    }
+
+    .estado.completo {
+      background: #eefbf3;
+      color: #2f8f5b;
+      border: 1px solid #bfe5cf;
+    }
+
+    .preview {
+      margin-top: 14px;
+      overflow: hidden;
+      border-radius: 14px;
+    }
+
+    .preview img,
+    .preview video {
+      width: 100%;
+      display: block;
+    }
+
+    .titulo-paso {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      font-size: 16px;
+      color: #445468;
+    }
+
+    .titulo-paso i {
+      color: #7d9db8;
+    }
+  </style>
 </head>
 
 <body>
 
-<div class="container">
+  <div class="container">
 
-<h3>Autocheck Técnico</h3>
+    <h3>Autocheck Técnico</h3>
 
-<div class="row">
-<input type="date" id="fecha">
-<input type="text" id="cuadrilla" placeholder="Cuadrilla">
-<select id="sede" onchange="this.blur()">
-<option value="">Sede</option>
-<option>Chincha</option>
-<option>Pisco</option>
-<option>Ica</option>
-<option>Nasca</option>
-<option>Palpa</option>
-<option>Puquio</option>
-<option>Coracora</option>
-</select>
-</div>
+    <div class="row">
+      <input type="date" id="fecha">
+      <input type="text" id="cuadrilla" placeholder="Cuadrilla">
+      <select id="sede" onchange="this.blur()">
+        <option value="">Sede</option>
+        <option>Chincha</option>
+        <option>Pisco</option>
+        <option>Ica</option>
+        <option>Nasca</option>
+        <option>Palpa</option>
+        <option>Puquio</option>
+        <option>Coracora</option>
+      </select>
+    </div>
 
-<input type="text" id="integrantes" placeholder="Integrantes">
+    <input type="text" id="integrantes" placeholder="Integrantes">
 
-<div id="actividades"></div>
+    <div id="actividades"></div>
 
-<button onclick="agregarActividad()">Agregar Actividad</button>
-<button onclick="enviar()">Enviar</button>
+    <button onclick="agregarActividad()">Agregar Actividad</button>
+    <button onclick="enviar()">Enviar</button>
 
-<div id="progressContainer">
-  <div id="progressBar">0%</div>
-</div>
+    <div id="progressContainer">
+      <div id="progressBar">0%</div>
+    </div>
 
-<div id="loader">⏳ Enviando información...</div>
+    <div id="loader">⏳ Enviando información...</div>
 
-</div>
+  </div>
 
-<script>
+  <script>
 
-const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
+    const API_ACTIVIDADES = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/e1e4b5a968d84337a95abc796540f5e3/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=68THhiLWnapC-IXEFFiRsdJdGh7HixX1J1U1kYnxM9I";
 
-const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
+    const API_ENVIO = "https://default7b3f24e7f3d4409b9c08cd03e218e8.d2.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/1d48ef909be84d99a06d9e5bb6b3439a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XMIANsWMsh_NL002VPcYudHuke3UsdyFSwGBBbcBsoE";
 
-fecha.value = new Date().toISOString().split('T')[0];
+    fecha.value = new Date().toISOString().split('T')[0];
 
-// =============================
-// 🔥 SOLO CAMBIO AQUÍ (COMPRESIÓN)
-// =============================
-async function toBase64(file){
+    // =============================
+    // 🔥 SOLO CAMBIO AQUÍ (COMPRESIÓN)
+    // =============================
+    async function toBase64(file) {
 
-  return new Promise((resolve) => {
+      return new Promise((resolve) => {
 
-    // 📷 IMAGEN
-    if(file.type.startsWith("image/")){
+        // 📷 IMAGEN
+        if (file.type.startsWith("image/")) {
 
-      let img = new Image();
-      let reader = new FileReader();
+          let img = new Image();
+          let reader = new FileReader();
 
-      reader.onload = e => img.src = e.target.result;
+          reader.onload = e => img.src = e.target.result;
 
-      img.onload = () => {
+          img.onload = () => {
 
-        let canvas = document.createElement("canvas");
-        let ctx = canvas.getContext("2d");
+            let canvas = document.createElement("canvas");
+            let ctx = canvas.getContext("2d");
 
-        let maxWidth = 1024;
-        let scale = Math.min(1, maxWidth / img.width);
+            let maxWidth = 1024;
+            let scale = Math.min(1, maxWidth / img.width);
 
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
 
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        let compressed = canvas.toDataURL("image/jpeg", 0.6);
+            let compressed = canvas.toDataURL("image/jpeg", 0.6);
 
-        resolve(compressed);
-      };
+            resolve(compressed);
+          };
 
-      reader.readAsDataURL(file);
+          reader.readAsDataURL(file);
+        }
+
+        // 🎥 VIDEO (SIN ROMPER TU FLUJO)
+        else {
+
+          // solo validación de peso (NO cambia lógica)
+          if (file.size > 10 * 1024 * 1024) {
+            alert("El video es muy pesado (máx 10MB)");
+            return;
+          }
+
+          let reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        }
+
+      });
     }
 
-    // 🎥 VIDEO (SIN ROMPER TU FLUJO)
-    else{
+    // =============================
+    // 🔥 TU CÓDIGO ORIGINAL (INTACTO)
+    // =============================
 
-      // solo validación de peso (NO cambia lógica)
-      if(file.size > 10 * 1024 * 1024){
-        alert("El video es muy pesado (máx 10MB)");
-        return;
-      }
+    async function cargarActividades() {
+      let res = await fetch(API_ACTIVIDADES, { method: "POST" });
+      let data = await res.json();
+      if (data.value) data = data.value;
 
-      let reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(file);
+      window.dataActividades = data;
+      window.listaActividades = [...new Set(data.map(x => x.ACTIVIDAD))];
+
+      agregarActividad();
     }
 
-  });
-}
+    function agregarActividad() {
 
-// =============================
-// 🔥 TU CÓDIGO ORIGINAL (INTACTO)
-// =============================
+      let div = document.createElement("div");
+      div.className = "card";
 
-async function cargarActividades(){
-  let res = await fetch(API_ACTIVIDADES,{method:"POST"});
-  let data = await res.json();
-  if(data.value) data = data.value;
+      let opciones = `<option value="">Seleccione actividad</option>`;
+      listaActividades.forEach(a => opciones += `<option>${a}</option>`);
 
-  window.dataActividades = data;
-  window.listaActividades = [...new Set(data.map(x=>x.ACTIVIDAD))];
-
-  agregarActividad();
-}
-
-function agregarActividad(){
-
-  let div = document.createElement("div");
-  div.className="card";
-
-  let opciones = `<option value="">Seleccione actividad</option>`;
-  listaActividades.forEach(a => opciones += `<option>${a}</option>`);
-
-  div.innerHTML = `
+      div.innerHTML = `
     <select class="actividad" onchange="this.blur(); cargarPasos(this)">
       ${opciones}
     </select>
   `;
 
-  actividades.appendChild(div);
-}
+      actividades.appendChild(div);
+    }
 
-function cargarPasos(select){
+    function cargarPasos(select) {
 
-  let cont = select.parentElement;
-  cont.querySelectorAll(".paso").forEach(e=>e.remove());
+      let cont = select.parentElement;
+      cont.querySelectorAll(".paso").forEach(e => e.remove());
 
-  let pasos = dataActividades.filter(x => x.ACTIVIDAD === select.value);
+      let pasos = dataActividades.filter(x => x.ACTIVIDAD === select.value);
 
-  pasos.forEach((p,i)=>{
+      pasos.forEach((p, i) => {
 
-    let div = document.createElement("div");
-    div.className="paso";
+        let div = document.createElement("div");
+        div.className = "paso";
 
-    div.innerHTML = `
-      <b>Paso ${i+1}</b>
+        div.innerHTML = `
+      <div class="titulo-paso">
+        <i class="fa-solid fa-list-check"></i>
+        <b>Paso ${i + 1}</b>
+      </div>
 
       <div><b>Etapa:</b> ${p["ETAPAS DE LA ACTIVIDAD"]}</div>
       <div><b>Pregunta:</b> ${p["PREGUNTA"]}</div>
@@ -225,124 +504,165 @@ function cargarPasos(select){
       <input type="file" class="foto" accept="image/*" capture="environment" style="display:none" onchange="archivo(this)">
       <input type="file" class="video" accept="video/*" capture="environment" style="display:none" onchange="archivo(this)">
 
-      <button class="btn-foto" onclick="this.previousElementSibling.previousElementSibling.click()">📷 Foto</button>
-      <button class="btn-video" onclick="this.previousElementSibling.click()">🎥 Video</button>
+      <div class="botones-evidencia">
 
-      <button class="btn-ver" onclick="toggle(this)">👁 Ver evidencia ⬇</button>
+        <button class="btn-foto" onclick="this.parentElement.previousElementSibling.previousElementSibling.click()">
+          <i class="fa-solid fa-camera"></i>Foto
+        </button>
+
+        <button class="btn-video" onclick="this.parentElement.previousElementSibling.click()">
+          <i class="fa-solid fa-video"></i>Video
+        </button>
+
+      </div>
+
+      <button class="btn-ver" onclick="toggle(this)">
+        <i class="fa-solid fa-eye"></i>Ver evidencia
+      </button>
 
       <div class="preview" style="display:none;"></div>
-      <div class="estado">❌ Falta evidencia</div>
+
+      <div class="estado pendiente">
+        <i class="fa-solid fa-circle-exclamation"></i>Evidencia pendiente
+      </div>
     `;
 
-    cont.appendChild(div);
-  });
-}
-
-function archivo(input){
-
-  let paso = input.parentElement;
-  let preview = paso.querySelector(".preview");
-  let estado = paso.querySelector(".estado");
-  let btn = paso.querySelector(".btn-ver");
-
-  let file = input.files[0];
-  if(!file) return;
-
-  let url = URL.createObjectURL(file);
-
-  if(file.type.includes("image")){
-    preview.innerHTML = `<img src="${url}">`;
-  }else{
-    preview.innerHTML = `<video src="${url}" controls></video>`;
-  }
-
-  estado.innerHTML="✔ Completo";
-  estado.style.color="green";
-
-  preview.style.display="block";
-  btn.innerHTML="👁 Ocultar evidencia ⬆";
-}
-
-function toggle(btn){
-  let preview = btn.parentElement.querySelector(".preview");
-
-  if(preview.style.display==="none"){
-    preview.style.display="block";
-    btn.innerHTML="👁 Ocultar evidencia ⬆";
-  }else{
-    preview.style.display="none";
-    btn.innerHTML="👁 Ver evidencia ⬇";
-  }
-}
-
-function progress(p){
-  progressContainer.style.display="block";
-  progressBar.style.width=p+"%";
-  progressBar.innerText=p+"%";
-}
-
-async function enviar(){
-
-  loader.style.display="block";
-
-  let data = {
-    fecha:fecha.value,
-    cuadrilla:cuadrilla.value,
-    integrantes:integrantes.value,
-    sede:sede.value,
-    registros:[]
-  };
-
-  let pasos = document.querySelectorAll(".paso");
-
-  for(let i=0;i<pasos.length;i++){
-
-    let paso = pasos[i];
-    let actividad = paso.closest(".card").querySelector(".actividad").value;
-
-    let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
-
-    if(!file){
-      alert("Falta evidencia en paso "+(i+1));
-      return;
+        cont.appendChild(div);
+      });
     }
 
-    let base64 = await toBase64(file);
+    function archivo(input) {
 
-    data.registros.push({
-      actividad,
-      numero:i+1,
-      etapa:paso.children[1].innerText.replace("Etapa: ",""),
-      pregunta:paso.children[2].innerText.replace("Pregunta: ",""),
-      criterio:paso.children[3].innerText.replace("Criterio: ",""),
-      evidencia:paso.children[4].innerText.replace("Evidencia: ",""),
-      nombreArchivo:`${i+1}-${actividad}`,
-      file:{
-        tipo:file.type,
-        data:base64.split(",")[1]
+      let paso = input.parentElement;
+
+      let preview = paso.querySelector(".preview");
+      let estado = paso.querySelector(".estado");
+      let btn = paso.querySelector(".btn-ver");
+
+      let file = input.files[0];
+
+      if (!file) return;
+
+      let url = URL.createObjectURL(file);
+
+      if (file.type.includes("image")) {
+
+        preview.innerHTML = `
+          <img src="${url}">
+        `;
+
+      } else {
+
+        preview.innerHTML = `
+          <video src="${url}" controls></video>
+        `;
       }
-    });
 
-    progress(Math.round((i+1)/pasos.length*80));
-  }
+      estado.className = "estado completo";
 
-  await fetch(API_ENVIO,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(data)
-  });
+      estado.innerHTML = `
+        <i class="fa-solid fa-circle-check"></i>
+        Evidencia registrada correctamente
+      `;
 
-  progress(100);
+      preview.style.display = "block";
 
-  setTimeout(()=>{
-    alert("Gracias por contribuir con tu seguridad");
-    location.reload();
-  },800);
-}
+      btn.innerHTML = `
+        <i class="fa-solid fa-eye-slash"></i>
+        Ocultar evidencia
+      `;
+    }
 
-window.onload = cargarActividades;
+    function toggle(btn) {
 
-</script>
+      let preview = btn.parentElement.querySelector(".preview");
+
+      if (preview.style.display === "none") {
+
+        preview.style.display = "block";
+
+        btn.innerHTML = `
+          <i class="fa-solid fa-eye-slash"></i>Ocultar evidencia
+        `;
+
+      } else {
+
+        preview.style.display = "none";
+
+        btn.innerHTML = `
+          <i class="fa-solid fa-eye"></i>Ver evidencia
+        `;
+      }
+    }
+
+    function progress(p) {
+      progressContainer.style.display = "block";
+      progressBar.style.width = p + "%";
+      progressBar.innerText = p + "%";
+    }
+
+    async function enviar() {
+
+      loader.style.display = "block";
+
+      let data = {
+        fecha: fecha.value,
+        cuadrilla: cuadrilla.value,
+        integrantes: integrantes.value,
+        sede: sede.value,
+        registros: []
+      };
+
+      let pasos = document.querySelectorAll(".paso");
+
+      for (let i = 0; i < pasos.length; i++) {
+
+        let paso = pasos[i];
+        let actividad = paso.closest(".card").querySelector(".actividad").value;
+
+        let file = paso.querySelector(".foto").files[0] || paso.querySelector(".video").files[0];
+
+        if (!file) {
+          alert("Falta evidencia en paso " + (i + 1));
+          return;
+        }
+
+        let base64 = await toBase64(file);
+
+        data.registros.push({
+          actividad,
+          numero: i + 1,
+          etapa: paso.children[1].innerText.replace("Etapa: ", ""),
+          pregunta: paso.children[2].innerText.replace("Pregunta: ", ""),
+          criterio: paso.children[3].innerText.replace("Criterio: ", ""),
+          evidencia: paso.children[4].innerText.replace("Evidencia: ", ""),
+          nombreArchivo: `${i + 1}-${actividad}`,
+          file: {
+            tipo: file.type,
+            data: base64.split(",")[1]
+          }
+        });
+
+        progress(Math.round((i + 1) / pasos.length * 80));
+      }
+
+      await fetch(API_ENVIO, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+
+      progress(100);
+
+      setTimeout(() => {
+        alert("Gracias por contribuir con tu seguridad");
+        location.reload();
+      }, 800);
+    }
+
+    window.onload = cargarActividades;
+
+  </script>
 
 </body>
 </html>
