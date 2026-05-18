@@ -122,6 +122,24 @@
       background: #7d93a7;
     }
 
+    .btn-iniciar {
+      background: #76c17f;
+      color: white;
+    }
+
+    .btn-iniciar:hover {
+      background: #4c9158;
+    }
+
+    .btn-detener {
+      background: #de9173;
+      color: white;
+    }
+
+    .btn-detener:hover {
+      background: #c46657;
+    }
+    
     .card {
       margin-top: 20px;
       padding: 20px;
@@ -357,7 +375,9 @@
 
     .btn-foto,
     .btn-video,
-    .btn-ver {
+    .btn-ver,
+    .btn-iniciar,
+    .btn-detener {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -447,26 +467,24 @@
       <div id="progressBar">0%</div>
     </div>
 
-    <div id="loader">⏳ Enviando información...</div>
+    <div id="loader">
+      <i class="fa-solid fa-hourglass-half"></i>Enviando información
+    </div>
 
   </div>
 
   <div class="modal-video" id="modalVideo">
 
     <div class="modal-video-content">
-
       <video id="videoPreview" autoplay muted playsinline></video>
-
-      <div class="tiempo-grabacion">
-        Tiempo restante: <span id="contador">15</span>s
-      </div>
+      <div class="tiempo-grabacion">Tiempo restante: <span id="contador">15</span>s</div>
 
       <div class="video-controles">
-        <button id="btnIniciar">
+        <button class="btn-iniciar" id="btnIniciar">
           <i class="fa-solid fa-circle"></i>Grabar
         </button>
 
-        <button id="btnDetener">
+        <button class="btn-detener" id="btnDetener">
           <i class="fa-solid fa-stop"></i>Detener
         </button>
       </div>
