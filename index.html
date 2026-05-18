@@ -139,7 +139,7 @@
     .btn-detener:hover {
       background: #c46657;
     }
-    
+
     .card {
       margin-top: 20px;
       padding: 20px;
@@ -456,7 +456,11 @@
       </select>
     </div>
 
-    <input type="text" id="integrantes" placeholder="Integrantes">
+    <div class="row">
+      <input type="text" id="ot" placeholder="Orden de Trabajo">
+      <input type="text" id="integrantes" placeholder="Integrantes">
+    </div>
+
 
     <div id="actividades"></div>
 
@@ -825,8 +829,9 @@
       loader.style.display = "block";
 
       let data = {
-        fecha: fecha.value,
+        fecha: fecha.value,     
         cuadrilla: cuadrilla.value,
+        ot: ot.value,
         integrantes: integrantes.value,
         sede: sede.value,
         registros: []
